@@ -1,3 +1,10 @@
+> **说明**：本文件是 KataGo 官方仓库文档的副本（MIT 许可，见 	hird_party/KataGo-LICENSE.txt），
+> 为便于离线查阅而收录，未做内容修改。文中以 `../cpp/...` 开头的相对链接指向上游仓库目录，
+> 在本仓库中不可点击；需要对照原文请访问 https://github.com/lightvector/KataGo 。
+>
+> 与运行相关的配置请直接看同目录的 `analysis_opencl.cfg` / `analysis_directml.cfg`。
+
+---
 ## KataGo GTP Extensions
 
 In addition to a basic set of [GTP commands](https://www.lysator.liu.se/~gunnar/gtp/), KataGo supports a few additional commands:
@@ -227,11 +234,11 @@ In addition to a basic set of [GTP commands](https://www.lysator.liu.se/~gunnar/
   * `kata-get-param PARAM`, `kata-set-param PARAM VALUE`
      * Get a parameter or set a parameter to a given value.
      * Almost any search-related parameter in the GTP config can be retrieved or set. Some of the notable ones are:
-        * `playoutDoublingAdvantage (float)`. See documentation for this parameter in [the example config](../cpp/configs/gtp_example.cfg). Setting this via this command affects the value used for analysis, and affects play only if the config is not already set to use `dynamicPlayoutDoublingAdvantageCapPerOppLead`.
-        * `visitCapContempt (int)`. Model the opponent as searching with only this many visits per position (at least 2, or set to 0 to disable), see documentation for this parameter in [the example config](../cpp/configs/gtp_example.cfg). Affects both play and analysis.
-        * `analysisWideRootNoise (float)`. See documentation for this parameter in [the example config](../cpp/configs/gtp_example.cfg)
-        * `numSearchThreads (int)`. The number of CPU threads to use in parallel, see documentation for this parameter in [the example config](../cpp/configs/gtp_example.cfg).
-        * `maxVisits (int), maxPlayouts (int), maxTime (float)`. Set or override one or more limits on the search, see [the example config](../cpp/configs/gtp_example.cfg). KataGo will obey the *combination* of all three.
+        * `playoutDoublingAdvantage (float)`. See documentation for this parameter in [the example config](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_example.cfg). Setting this via this command affects the value used for analysis, and affects play only if the config is not already set to use `dynamicPlayoutDoublingAdvantageCapPerOppLead`.
+        * `visitCapContempt (int)`. Model the opponent as searching with only this many visits per position (at least 2, or set to 0 to disable), see documentation for this parameter in [the example config](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_example.cfg). Affects both play and analysis.
+        * `analysisWideRootNoise (float)`. See documentation for this parameter in [the example config](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_example.cfg)
+        * `numSearchThreads (int)`. The number of CPU threads to use in parallel, see documentation for this parameter in [the example config](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_example.cfg).
+        * `maxVisits (int), maxPlayouts (int), maxTime (float)`. Set or override one or more limits on the search, see [the example config](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_example.cfg). KataGo will obey the *combination* of all three.
         * `analysisIgnorePreRootHistory (boolean)`. Whether to ignore pre-root history during analysis.
         * `genmoveAntiMirror (boolean)`. Whether to enable anti-mirror play during genmove.
         * `antiMirror (boolean)`. Whether to enable anti-mirror play during analysis.

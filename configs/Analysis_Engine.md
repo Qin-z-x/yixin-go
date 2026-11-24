@@ -1,3 +1,10 @@
+> **说明**：本文件是 KataGo 官方仓库文档的副本（MIT 许可，见 	hird_party/KataGo-LICENSE.txt），
+> 为便于离线查阅而收录，未做内容修改。文中以 `../cpp/...` 开头的相对链接指向上游仓库目录，
+> 在本仓库中不可点击；需要对照原文请访问 https://github.com/lightvector/KataGo 。
+>
+> 与运行相关的配置请直接看同目录的 `analysis_opencl.cfg` / `analysis_directml.cfg`。
+
+---
 # KataGo Parallel Analysis Engine
 
 KataGo contains an engine that can be used to analyze large numbers of positions in parallel (entire games, or multiple games).
@@ -105,9 +112,9 @@ Explanation of fields (including some optional fields not present in the above q
    * `focusWeights (list of floats)`: Optional. Positive numbers, one per entry of `focusMoves`, giving the relative share of the focused playouts that each move receives. For example `[3, 1]` sends three quarters of them to the first move and one quarter to the second. Defaults to equal weights. Must be omitted or empty when `focusMoves` is omitted.
    * `focusProb (float)`: Optional. The probability from 0.0 to 1.0 that each root playout is redirected into a focus move. Internally capped at 0.99 so that the root keeps receiving some visits and `maxVisits` is still reached. Defaults to 0.5. Must be valid even when `focusMoves` is omitted, but has no effect then.
    * `overrideSettings (object)`: Optional. Specify any number of `"paramName":value` entries in this object to override those params from command line `CONFIG_FILE` for this query. Most search parameters can be overriden: `cpuctExploration`, `winLossUtilityFactor`, etc. Some notable parameters include:
-      * `playoutDoublingAdvantage (float)`. A value of PDA from -3 to 3 will adjust KataGo's evaluation to assume that the opponent is NOT of equal strength/compte, but rather that the current player has 2^(PDA) times as many playouts as the opponent. Dynamic versions of this are used to significant effect in handicap games in GTP mode, see [GTP example config](../cpp/configs/gtp_example.cfg).
-      * `visitCapContempt (int)`. Model the opponent of the player to move as searching with only this many visits per position (at least 2, or set to 0 to disable). Analysis values then reflect play against such an opponent. Set `visitCapContemptPla` to `B` or `W` to instead specify which player is capped. See [GTP example config](../cpp/configs/gtp_example.cfg), including for other parameters you may want to change along with this one.
-      * `wideRootNoise (float)`. See documentation for this parameter in [the example config](../cpp/configs/analysis_example.cfg)
+      * `playoutDoublingAdvantage (float)`. A value of PDA from -3 to 3 will adjust KataGo's evaluation to assume that the opponent is NOT of equal strength/compte, but rather that the current player has 2^(PDA) times as many playouts as the opponent. Dynamic versions of this are used to significant effect in handicap games in GTP mode, see [GTP example config](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_example.cfg).
+      * `visitCapContempt (int)`. Model the opponent of the player to move as searching with only this many visits per position (at least 2, or set to 0 to disable). Analysis values then reflect play against such an opponent. Set `visitCapContemptPla` to `B` or `W` to instead specify which player is capped. See [GTP example config](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_example.cfg), including for other parameters you may want to change along with this one.
+      * `wideRootNoise (float)`. See documentation for this parameter in [the example config](https://github.com/lightvector/KataGo/blob/master/cpp/configs/analysis_example.cfg)
       * `ignorePreRootHistory (boolean)`. Whether to ignore pre-root history during analysis.
       * `antiMirror (boolean)`. Whether to enable anti-mirror play during analysis. Off by default. Will probably result in biased and nonsensical winrates and other analysis values, but moves may detect and crudely respond to mirror play.
       * `rootNumSymmetriesToSample (int from 1 to 8)`. How many of the 8 possible random symmetries to evaluate the neural net with and average. Defaults to 1, but if you set this to 2, or 8 you might get a slightly higher-quality policy at the root due to noise reduction.
@@ -437,7 +444,7 @@ The response to this query will echo back the same keys passed in, along with a 
 
 As of version 1.15.0, released July 2024, KataGo supports a new human supervised learning ("human SL") model `b18c384nbt-humanv0.bin.gz` that was trained on a large number of human games to predict moves by players of all different ranks and the outcomes of those games. People have only just started to experiment with the model and there might be many creative possibilities for analysis or play.
 
-See also the notes on "humanSL" and other parameters within the [GTP human 5k example config](../cpp/configs/gtp_human5k_example.cfg). Although this is a GTP config, not an analysis engine config, the inline documentation about how the "humanSL" parameters behave is just as applicable to the analysis engine.
+See also the notes on "humanSL" and other parameters within the [GTP human 5k example config](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_human5k_example.cfg). Although this is a GTP config, not an analysis engine config, the inline documentation about how the "humanSL" parameters behave is just as applicable to the analysis engine.
 
 Similarly, for GTP users, most of the below notes are just as applicable to GTP play and analysis (used by engines like Lizzie or Sabaki) despite being written from the perspective of the analysis engine.
 
@@ -498,7 +505,7 @@ Note that since old historical human games from training might vary in whether t
 * If the top moveInfo from the result (the moveInfo with `"order":0`) is a pass, then pass.
 * Otherwise, read `humanPolicy` and pick a random move proportional to the policy probabilities, except excluding passing.
 
-(Note: For GTP users, [gtp_human5k_example.cfg](../cpp/configs/gtp_human5k_example.cfg) already does human imitation play by default, with some GTP-specific hacks and parameters to get KataGo's move selection to use the human SL model in the above kind of way. See documentation in that config.)
+(Note: For GTP users, [gtp_human5k_example.cfg](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_human5k_example.cfg) already does human imitation play by default, with some GTP-specific hacks and parameters to get KataGo's move selection to use the human SL model in the above kind of way. See documentation in that config.)
 
 Optionally, also you can set `rootNumSymmetriesToSample` to `2`, or to `8` instead of the default `1`. This will slightly add latency but improve the quality of the human policy by averaging more symmetries, which might be good when relying so heavily on the raw human policy without any search.
 
@@ -535,7 +542,7 @@ If you want to obtain human *style* moves, but play stronger than a given human 
 * A combination of methods like this, with appropriate adjusted numbers, is a good way to compensate for the gap that starts to open up in the human SL model no longer being able to match the strength of very top players at only 1 visit, but experimentation may be needed to tune the numbers.
 
 Note: For GTP users, the parameter `humanSLChosenMovePiklLambda` does precisely this exp-based probability scaling.
-An example set of parameters is given in [gtp_human9d_search_example.cfg](../cpp/configs/gtp_human9d_search_example.cfg), some of which may also be instructive to read even if you're using the analysis engine mode rather than GTP.
+An example set of parameters is given in [gtp_human9d_search_example.cfg](https://github.com/lightvector/KataGo/blob/master/cpp/configs/gtp_human9d_search_example.cfg), some of which may also be instructive to read even if you're using the analysis engine mode rather than GTP.
 
 #### Heavily bias the search to anticipate human-like sequences rather than KataGo sequences.
 
