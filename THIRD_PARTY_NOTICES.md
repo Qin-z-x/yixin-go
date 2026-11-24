@@ -1,6 +1,9 @@
 # Third-Party Notices
 
-本项目代码为 MIT（见根目录 `LICENSE`）。便携版另外打包了下列第三方组件。
+## 许可范围
+
+- **本项目自身代码**（Python 后端、Canvas 前端、打包脚本、文档）：MIT，见根目录 [LICENSE](LICENSE)。
+- 便携版另外打包了下列第三方组件；它们的许可证**不**被上面的 MIT 覆盖。
 
 ## KataGo
 
