@@ -298,7 +298,8 @@ class GoGame:
         return n
 
     def resign(self) -> dict:
-        winner = WHITE if self.player_color == BLACK else BLACK
+        # player_color 使用 GTP/SGF 的 "B"/"W" 字符串；胜者是认输方的对手。
+        winner = WHITE if self.player_color == "B" else BLACK
         self.phase = "ended"
         self.result = {
             "winner": COLOR_CODE[winner],

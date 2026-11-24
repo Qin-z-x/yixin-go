@@ -295,13 +295,8 @@ class SgfTests(unittest.TestCase):
         self.assertIn(";W[]", sgf)
         self.assertRegex(sgf, r"RE\[[BW]\+")
 
-    @unittest.expectedFailure
     def test_sgf_resign(self):
-        """已知缺陷：GoGame.resign() 用 int 比较字符串 player_color，恒判黑胜。
-
-        server.py 的 human_resign 自己算 winner，线上链路不受影响；该函数目前是
-        死代码，但 SGF 的 RE 会写反。见 docs/AUDIT-REPORT.md 已知缺陷表。
-        """
+        """认输后 SGF 的 RE 应为对手胜。"""
         g = GoGame(size=9, player_color="B")
         g.play("E5")
         g.resign()
@@ -385,9 +380,7 @@ class UndoTests(unittest.TestCase):
 
 
 class ResignTests(unittest.TestCase):
-    @unittest.expectedFailure
     def test_resign_player_black(self):
-        """已知缺陷：player_color 是 "B" 字符串，与 BLACK=1 比较永假，恒判黑胜。"""
         g = GoGame(size=9, player_color="B")
         result = g.resign()
         self.assertEqual(result["winner"], "W")
@@ -395,7 +388,6 @@ class ResignTests(unittest.TestCase):
         self.assertIn("认输", result["text"])
 
     def test_resign_player_white(self):
-        """当前实现恒判黑胜；执白认输时“黑胜”恰好正确，故此用例照常通过。"""
         g = GoGame(size=9, player_color="W")
         self.assertEqual(g.resign()["winner"], "B")
 

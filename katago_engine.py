@@ -258,7 +258,7 @@ class AnalysisEngine:
             self.ready.wait(min(0.5, remaining))
         if not self.ready.is_set():
             if not self.error:
-                self.error = "引擎进程已退出：" + (self.logs[-1] if self.logs else "未知原因")
+                self.error = self._describe_exit(proc)
                 LOG.error("%s", self.error)
             return
         self._auto_restarts = 0
@@ -275,6 +275,28 @@ class AnalysisEngine:
             if m:
                 return m.group(1)
         return ""
+
+    def _describe_exit(self, proc: subprocess.Popen | None) -> str:
+        """生成比“最后一行日志”更有用的退出原因。"""
+        code = proc.poll() if proc is not None else None
+        meaningful = None
+        for line in reversed(self.logs):
+            low = line.lower()
+            if "started, ready" in low or "using opencl" in low or "using cuda" in low:
+                continue
+            if "error" in low or "exception" in low or "failed" in low or "uncaught" in low:
+                meaningful = line
+                break
+        if meaningful is None:
+            for line in reversed(self.logs):
+                low = line.lower()
+                if "started, ready" in low or low.startswith("katago v") or "warning:" in low:
+                    continue
+                meaningful = line
+                break
+        reason = f"（退出码 {code}）" if code is not None else ""
+        detail = f"：{meaningful}" if meaningful else ""
+        return f"引擎进程已退出{reason}{detail}"
 
     def _fail_pending(self, message: str) -> None:
         """让所有等结果的线程立刻醒来，而不是干等到请求超时。"""
@@ -403,7 +425,7 @@ class AnalysisEngine:
         if self._stopping:
             self._fail_pending("AI 引擎正在重启")
             return
-        self.error = "引擎进程已退出：" + (self.logs[-1] if self.logs else "未知原因")
+        self.error = self._describe_exit(proc)
         LOG.warning("%s", self.error)
         self._fail_pending(self.error)
         self._schedule_auto_restart()

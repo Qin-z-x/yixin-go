@@ -5,11 +5,13 @@
 - 测试前把 ``server.APP.engine`` 替换成 FakeEngine，AI 相关线程可正常跑完。
 """
 import json
+import tempfile
 import threading
 import time
 import unittest
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 import server
 from go_engine import xy_to_vertex
@@ -154,7 +156,7 @@ class BootstrapTests(HTTPTestCase):
         self.assertEqual(data["default_level"], "pro2")
         self.assertEqual(data["defaults"]["komi"], 7.5)
         self.assertEqual(data["defaults"]["size"], 19)
-        self.assertEqual(data["version"], "1.0.0")
+        self.assertEqual(data["version"], "0.2.6")
         self.assertTrue(data["engine"]["ready"])
         self.assertNotIn("profile", data["levels"][0])
 
@@ -257,6 +259,22 @@ class NewGameTests(HTTPTestCase):
         self.assertEqual(status, 400, data)
         self.assertIn("执黑或执白", data["error"])
 
+    def test_time_limit_validation_and_payload(self):
+        status, game = self.post_json("/api/new", {"time_limit": 600, "size": 9})
+        self.assertEqual(status, 200, game)
+        self.assertTrue(game["clock"]["enabled"])
+        self.assertEqual(game["clock"]["limit"], 600)
+        self.assertGreater(game["clock"]["B"], 590)
+        for value in (-1, 90000, "abc"):
+            status, data = self.post_json("/api/new", {"time_limit": value})
+            self.assertEqual(status, 400, (value, data))
+        status, game = self.post_json("/api/new", {"time_limit": 600, "byo_yomi": 30, "size": 9})
+        self.assertEqual(status, 200, game)
+        self.assertEqual(game["clock"]["byo_yomi"], 30)
+        self.assertEqual(game["clock"]["B_periods"], 3)
+        status, data = self.post_json("/api/new", {"byo_yomi": 30, "size": 9})
+        self.assertEqual(status, 400, data)
+
     def test_invalid_json_body(self):
         status, data = self.post_json("/api/new", raw=b"{not json")
         self.assertEqual(status, 400, data)
@@ -331,16 +349,93 @@ class MoveTests(HTTPTestCase):
         self.assertEqual(status, 404, data)
         self.assertIn("对局不存在", data["error"])
 
-    @unittest.expectedFailure
     def test_unknown_game_get_404(self):
-        """已知缺陷：do_GET 没有 KeyError 分支，查不到对局时返回 500 而不是 404。"""
+        """未知对局应返回 404，而不是 500。"""
         status, data = self.get_json("/api/game/deadbeef")
         self.assertEqual(status, 404, data)
+        self.assertIn("对局不存在", data["error"])
 
     def test_unknown_action_404(self):
         game = self.new_game()
         status, data = self.post_json(f"/api/game/{game['id']}/nonsense", {})
         self.assertEqual(status, 404, data)
+
+
+class ImportRecordTests(HTTPTestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_games = server.GAMES_DIR
+        server.GAMES_DIR = Path(self.tmp.name) / "games"
+        server.GAMES_DIR.mkdir(parents=True)
+        self.old_engine = server.APP.engine
+        server.APP.engine = FakeEngine()
+        server.APP.engine.ready = True
+
+    def tearDown(self):
+        server.GAMES_DIR = self.old_games
+        server.APP.engine = self.old_engine
+        self.tmp.cleanup()
+
+    def test_import_sgf(self):
+        sgf = "(;GM[1]SZ[9]KM[6.5]RU[Chinese]RE[B+3.5];B[ee];W[cc];B[gg])"
+        status, data = self.post_json("/api/import", {"sgf": sgf})
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data["size"], 9)
+        self.assertEqual(data["turn"], 3)
+        self.assertEqual(data["phase"], "ended")
+        self.assertEqual(data["result"]["winner"], "B")
+        self.assertTrue(data["saved"])
+
+    def test_import_invalid(self):
+        status, data = self.post_json("/api/import", {"sgf": "(;SZ[9];B[ee];B[cc])"})
+        self.assertEqual(status, 400, data)
+        self.assertIn("轮次", data["error"])
+
+    def test_load_record_by_file(self):
+        sgf = "(;GM[1]SZ[9]KM[6.5];B[ee];W[cc];B[gg])"
+        status, data = self.post_json("/api/import", {"sgf": sgf})
+        self.assertEqual(status, 200, data)
+        _, games = self.get_json("/api/games")
+        self.assertTrue(games["games"])
+        filename = games["games"][0]["file"]
+        status, loaded = self.post_json(f"/api/records/{filename}/load", {})
+        self.assertEqual(status, 200, loaded)
+        self.assertEqual(loaded["phase"], "ended")
+        self.assertEqual(loaded["turn"], 3)
+
+    def test_games_payload_has_active_list(self):
+        status, data = self.get_json("/api/games")
+        self.assertEqual(status, 200)
+        self.assertIn("active_games", data)
+        self.assertIsInstance(data["active_games"], list)
+
+    def test_batch_delete_records_endpoint(self):
+        for sgf in ("(;SZ[9]KM[6.5]RE[B+R];B[ee];W[cc])", "(;SZ[9]KM[6.5]RE[W+R];B[dd];W[gg])"):
+            status, data = self.post_json("/api/import", {"sgf": sgf})
+            self.assertEqual(status, 200, data)
+        _, games = self.get_json("/api/games")
+        names = [g["file"] for g in games["games"]]
+        status, result = self.post_json("/api/records/delete", {"files": names[:1] + ["missing.json"]})
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result["deleted"], names[:1])
+        self.assertEqual(result["missing"], ["missing.json"])
+        status, error = self.post_json("/api/records/delete", {"files": "nope"})
+        self.assertEqual(status, 400, error)
+
+    def test_diagnostics_and_stats_endpoints(self):
+        sgf = "(;GM[1]SZ[9]KM[6.5];B[ee];W[cc];B[gg])"
+        status, imported = self.post_json("/api/import", {"sgf": sgf})
+        self.assertEqual(status, 200, imported)
+        status, diag = self.get_json("/api/diagnostics")
+        self.assertEqual(status, 200, diag)
+        self.assertIn("checks", diag)
+        self.assertTrue(any(c["id"] == "main_model" for c in diag["checks"]))
+        status, stats = self.get_json("/api/stats")
+        self.assertEqual(status, 200, stats)
+        self.assertGreaterEqual(stats["total"], 1)
+        status, error = self.get_json(f"/api/game/{imported['id']}/review/report")
+        self.assertEqual(status, 409, error)
+        self.assertIn("复盘", error["error"])
 
 
 class StaticFileTests(HTTPTestCase):

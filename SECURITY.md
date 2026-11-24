@@ -11,7 +11,7 @@
 
 ## 怎么报
 
-**不要公开发 Issue。** 用 GitHub 的 [Private vulnerability reporting](https://github.com/Qin-z-x/yixin-go/security/advisories/new) 提交，或直接发邮件给维护者（见仓库 profile）。
+**不要公开发 Issue。** 用 GitHub 的 [Private vulnerability reporting](https://github.com/Qin-Z-x/yixin-go/security/advisories/new) 提交，或直接发邮件给维护者（见仓库 profile）。
 
 报告里请包含：影响版本、复现步骤、受影响文件/端点、你判断的严重程度。没有 PoC 也可以报，我会自己复现。
 

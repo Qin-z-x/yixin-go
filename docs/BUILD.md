@@ -25,6 +25,7 @@
 | `engine/katago-opencl/` | KataGo 可执行文件与 DLL | 否（体积大） |
 | `models/` | 两个 `.bin.gz` 神经网络 | 否（体积大） |
 | `data/games/` | 对局自动保存的 JSON / SGF | 否（运行期生成） |
+| `data/active/` | 未完成对局快照（重启续弈） | 否（运行期生成） |
 | `logs/` | KataGo 与服务的日志 | 否（运行期生成） |
 
 `.gitignore` 已经忽略 `engine/`、`models/`、`dist/`、`build/`、`data/`、`logs/`，所以克隆下来是一个"缺引擎和模型"的干净仓库，这是故意的。

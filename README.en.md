@@ -7,14 +7,17 @@ Every move is a live MCTS search on your own GPU — not a scripted game record,
 [![License: MIT](https://img.shields.io/badge/License-MIT-3b82f6?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4?style=flat-square)](#requirements)
 [![Engine](https://img.shields.io/badge/engine-KataGo%201.18.1-16a34a?style=flat-square)](https://github.com/lightvector/KataGo)
-[![Stars](https://img.shields.io/github/stars/Qin-z-x/yixin-go?style=flat-square&color=e0b44c)](https://github.com/Qin-z-x/yixin-go/stargazers)
+[![Release](https://img.shields.io/github/v/release/Qin-Z-x/yixin-go?style=flat-square&color=e0b44c)](https://github.com/Qin-Z-x/yixin-go/releases/latest)
+[![Stars](https://img.shields.io/github/stars/Qin-Z-x/yixin-go?style=flat-square&color=e0b44c)](https://github.com/Qin-Z-x/yixin-go/stargazers)
 
 <p align="center">
-  <img src="docs/screenshots/02-english.png" width="49%" alt="English UI">
   <img src="docs/screenshots/01-home.png" width="49%" alt="Chinese UI">
+  <img src="docs/screenshots/02-english.png" width="49%" alt="English UI">
+  <img src="docs/screenshots/03-hint.png" width="49%" alt="AI hints: A/B/C candidates">
+  <img src="docs/screenshots/04-estimate.png" width="49%" alt="Position estimate">
 </p>
 
-<sub>Real screenshots: 19×19, default "2d pro" level (b10c512, 400 visits per move), engine ready on a local RTX 5060 Laptop. The UI toggles between Chinese and English; <code>?lang=en</code> opens it directly in English.</sub>
+<sub>Real screenshots (Windows 11 / RTX 5060 Laptop / OpenCL): 19×19, default "2d pro" level (b10c512, 400 visits per move). The last two show AI hints (A/B/C candidates) and the position estimate. The UI toggles between Chinese and English; <code>?lang=en</code> opens it directly in English.</sub>
 
 ---
 
@@ -32,7 +35,7 @@ It is not trying to be Sabaki, KaTrain or Lizzie. Those are far more capable as 
 
 ## Quick start (60 seconds)
 
-1. Grab `Yixin-Go-Sparring-*-portable.zip` from [Releases](https://github.com/Qin-z-x/yixin-go/releases/latest) and extract it anywhere **without non-ASCII characters in the path** (avoid `Program Files` too).
+1. Grab `Yixin-Go-Sparring-*-portable.zip` from [Releases](https://github.com/Qin-Z-x/yixin-go/releases/latest) and extract it anywhere **without non-ASCII characters in the path** (avoid `Program Files` too).
 2. Double-click `启动围棋陪练.bat` ("start Go sparring").
 3. Wait 10–30 s for GPU warm-up; Edge opens as an app window with the board.
 

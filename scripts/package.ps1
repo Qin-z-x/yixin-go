@@ -52,7 +52,7 @@ if ($missing.Count -gt 0) {
 }
 
 # 必须排除的运行期产物（隐私 + 体积）
-$excludeRelative = @("logs", "data\games", "data\edge-preview", "data\browser-profile", "logs\*.log", "*.log", "*.pyc", "__pycache__")
+$excludeRelative = @("logs", "data\games", "data\active", "data\edge-preview", "data\browser-profile", "logs\*.log", "*.log", "*.pyc", "__pycache__")
 Write-Step "排除运行期产物"
 foreach ($rel in $excludeRelative) { Write-Warn2 "exclude: $rel" }
 
@@ -75,9 +75,17 @@ if (Test-Path $stagingRoot) { Remove-Item -Recurse -Force $stagingRoot }
 New-Item -ItemType Directory -Force -Path $staging | Out-Null
 
 $robolog = & robocopy $Source $staging /E /NFL /NDL /NJH /NJS /NP `
-    /XD logs data\games data\edge-preview data\browser-profile __pycache__ .git `
+    /XD logs data\games data\active data\edge-preview data\browser-profile docs\audit docs\community __pycache__ .git `
     /XF *.log *.pyc /R:1 /W:1 2>&1
 if ($LASTEXITCODE -ge 8) { throw "robocopy 失败（exit $LASTEXITCODE）：$robolog" }
+
+# 双保险：即使 robocopy 的相对路径排除在某个系统上失效，也不让运行期数据进包。
+foreach ($rel in @("data", "logs", "docs\audit", "docs\community")) {
+    $p = Join-Path $staging $rel
+    if (Test-Path $p) { Remove-Item -Recurse -Force $p }
+}
+New-Item -ItemType Directory -Force -Path (Join-Path $staging "data\games") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $staging "data\active") | Out-Null
 
 Write-Step "补齐说明与许可文件"
 foreach ($doc in @("README.md", "THIRD_PARTY_NOTICES.md", "LICENSE", "CHANGELOG.md")) {

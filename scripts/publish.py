@@ -42,8 +42,8 @@ except Exception:
 
 API = "https://api.github.com"
 UPLOADS = "https://uploads.github.com"
-PLACEHOLDER_OWNER = "Qin-z-x"
-PLACEHOLDER_REPO = "yixin-go"
+PLACEHOLDER_OWNER = "__OWNER__"
+PLACEHOLDER_REPO = "__REPO__"
 TEXT_SUFFIXES = {".md", ".markdown", ".yml", ".yaml", ".json", ".txt", ".html", ".css", ".js", ".py", ".cfg", ".bat", ".spec", ".toml"}
 
 
@@ -184,7 +184,7 @@ def main() -> int:
     print(f"目标仓库：{owner}/{args.repo}")
     print(f"待发布文件：{len(files)} 个")
     replaced = [f for f in files if pathlib.Path(f).suffix.lower() in TEXT_SUFFIXES]
-    print(f"其中会做占位符替换（Qin-z-x/yixin-go）的文本文件：{len(replaced)} 个")
+    print(f"其中会做占位符替换（__OWNER__/__REPO__）的文本文件：{len(replaced)} 个")
 
     if args.dry_run:
         print("\n[dry-run] 计划调用：")

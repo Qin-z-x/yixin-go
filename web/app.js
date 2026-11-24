@@ -12,7 +12,7 @@
     boot: null,
     levels: [],
     levelId: "pro2",
-    settings: { size: 19, player_color: "B", handicap: 0, komi: 7.5, rules: "chinese" },
+    settings: { size: 19, player_color: "B", handicap: 0, komi: 7.5, rules: "chinese", time_limit: 0, byo_yomi: 0 },
     game: null,
     view: "play",
     tab: "analysis",
@@ -28,11 +28,16 @@
     hintVisible: false,
     ownershipVisible: false,
     showNumbers: false,
+    flip: false,
     selectedCandidate: null,
     sound: true,
     audioCtx: null,
     soundBuffer: null,
     modalOpen: false,
+    confirmOpen: false,
+    confirmClose: null,
+    detailOpen: false,
+    detailClose: null,
     modalResolve: null,
     resultKey: null,
     initialLoaded: false,
@@ -256,9 +261,13 @@
     try {
       const saved = JSON.parse(localStorage.getItem("yixin_settings") || "{}");
       state.settings = { ...state.settings, ...(saved || {}) };
+      if (![0, 300, 600, 1200, 1800, 3600].includes(Number(state.settings.time_limit))) state.settings.time_limit = 0;
+      if (![0, 30, 60].includes(Number(state.settings.byo_yomi))) state.settings.byo_yomi = 0;
+      if (!Number(state.settings.time_limit)) state.settings.byo_yomi = 0;
       state.levelId = localStorage.getItem("yixin_level") || state.levelId;
       state.sound = localStorage.getItem("yixin_sound") !== "0";
       state.showNumbers = localStorage.getItem("yixin_numbers") === "1";
+      state.flip = localStorage.getItem("yixin_flip") === "1";
       state.lang = localStorage.getItem("yixin_lang") === "en" ? "en" : "zh";
     } catch (e) { /* ignore */ }
   }
@@ -269,6 +278,7 @@
       localStorage.setItem("yixin_level", state.levelId);
       localStorage.setItem("yixin_sound", state.sound ? "1" : "0");
       localStorage.setItem("yixin_numbers", state.showNumbers ? "1" : "0");
+      localStorage.setItem("yixin_flip", state.flip ? "1" : "0");
     } catch (e) { /* ignore */ }
   }
 
@@ -336,6 +346,7 @@
     setupBoard();
     updateSoundButton();
     updateNumbersButton();
+    updateFlipButton();
     updateLangButton();
     startLocalizeObserver();
     try {
@@ -358,6 +369,10 @@
         game = await createGame({ silent: true, noConfirm: true });
       } else {
         applyGame(game, { initial: true });
+      }
+      const activeGames = boot.active_games || [];
+      if (activeGames.length && !activeGames.some((item) => item.id === game.id)) {
+        setTimeout(() => toast(`有 ${activeGames.length} 局未完成对局，可在「棋谱」继续`, 5200), 1200);
       }
     } catch (err) {
       showFatal(err.message || String(err));
@@ -402,10 +417,21 @@
       state.settings.komi = Number($("#komi-input").value) || 0;
       savePrefs();
     });
+    $("#time-limit-input").addEventListener("change", () => {
+      state.settings.time_limit = Number($("#time-limit-input").value) || 0;
+      if (!state.settings.time_limit) state.settings.byo_yomi = 0;
+      renderSettings();
+      savePrefs();
+    });
+    $("#byo-yomi-input").addEventListener("change", () => {
+      state.settings.byo_yomi = Number($("#byo-yomi-input").value) || 0;
+      savePrefs();
+    });
 
     $("#hint-btn").addEventListener("click", getHint);
     $("#estimate-btn").addEventListener("click", getEstimate);
     $("#undo-btn").addEventListener("click", undoMove);
+    $("#redo-btn").addEventListener("click", redoMove);
     $("#ai-retry-btn").addEventListener("click", retryAi);
     $("#pass-btn").addEventListener("click", requestPass);
     $("#resign-btn").addEventListener("click", requestResign);
@@ -421,6 +447,13 @@
       updateNumbersButton();
       savePrefs();
       drawBoard();
+    });
+    $("#flip-btn").addEventListener("click", () => {
+      state.flip = !state.flip;
+      updateFlipButton();
+      savePrefs();
+      drawBoard();
+      toast(state.flip ? "棋盘已翻转" : "棋盘已复位");
     });
     $("#sound-btn").addEventListener("click", () => {
       state.sound = !state.sound;
@@ -486,7 +519,7 @@
       else if (e.target.closest("#reestimate-btn")) reestimateScore();
     });
     $("#start-review-inline").addEventListener("click", () => {
-      if (state.game && state.game.phase === "ended") startReview();
+      if (state.game && state.game.phase === "ended" && state.game.turn > 0) startReview();
       else toast("对局结束后才能复盘");
     });
 
@@ -501,8 +534,17 @@
       drawReviewChart();
     });
     $("#review-chart").addEventListener("click", onChartClick);
+    $("#export-review-btn").addEventListener("click", downloadReviewReport);
 
     document.addEventListener("keydown", (e) => {
+      if (state.confirmOpen) {
+        if (e.key === "Escape" && state.confirmClose) state.confirmClose();
+        return;
+      }
+      if (state.detailOpen) {
+        if (e.key === "Escape" && state.detailClose) state.detailClose();
+        return;
+      }
       if (state.modalOpen) {
         if (e.key === "Escape") closeModal();
         else if (e.key === "?" && state.helpOpen) closeModal();
@@ -511,9 +553,25 @@
       if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
       if (e.key === "?") { e.preventDefault(); showHelp(); return; }
       const key = e.key.toLowerCase();
+      if (state.view === "review" && state.reviewPayload && state.reviewPayload.items && state.reviewPayload.items.length) {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          e.preventDefault();
+          selectReview((state.reviewIndex ?? 0) + (e.key === "ArrowLeft" ? -1 : 1));
+          return;
+        }
+      }
       if (key === "h") { e.preventDefault(); getHint(); }
       else if (key === "u") { e.preventDefault(); undoMove(); }
+      else if (key === "y") { e.preventDefault(); redoMove(); }
       else if (key === "p") { e.preventDefault(); requestPass(); }
+      else if (key === "e") { e.preventDefault(); getEstimate(); }
+      else if (key === "n") { e.preventDefault(); requestNewGame(); }
+      else if (key === "r") {
+        e.preventDefault();
+        if (state.view === "review") exitReview();
+        else if (state.game && state.game.phase === "ended") startReview();
+        else toast("对局结束后才能复盘");
+      }
     });
 
     const board = $("#board");
@@ -557,6 +615,9 @@
     });
     $("#handicap-input").value = String(state.settings.handicap || 0);
     $("#komi-input").value = String(state.settings.komi);
+    $("#time-limit-input").value = String(state.settings.time_limit || 0);
+    $("#byo-yomi-input").value = String(state.settings.byo_yomi || 0);
+    $("#byo-yomi-input").disabled = !Number(state.settings.time_limit);
     $("#strength-badge").innerHTML = `<span class="badge-dot"></span>${esc(strengthBadgeText())}`;
   }
 
@@ -722,10 +783,43 @@
     }
     if (game.ai_thinking || (game.phase === "scoring" && game.scoring && game.scoring.estimating)) {
       schedulePoll(700);
+    } else if (game.clock && game.clock.enabled && game.phase === "playing") {
+      schedulePoll(1000);
     } else if (state.extraPolls > 0 && game.phase === "playing" && (!game.candidates || game.candidates.length === 0)) {
       state.extraPolls -= 1;
       schedulePoll(1200);
     }
+  }
+
+  function renderClocks(g) {
+    const info = g && g.clock;
+    const enabled = !!(info && info.enabled && g.phase === "playing");
+    const ai = $("#ai-clock");
+    const human = $("#human-clock");
+    if (!enabled) {
+      ai.classList.add("hidden");
+      human.classList.add("hidden");
+      return;
+    }
+    const aiColor = g.ai_color;
+    const humanColor = g.player_color;
+    const labelFor = (side) => {
+      const main = Number(info[`${side}_main`] != null ? info[`${side}_main`] : info[side]) || 0;
+      if (main > 0) return formatClock(main);
+      if (Number(info.byo_yomi)) {
+        const periods = info[`${side}_periods`] != null ? info[`${side}_periods`] : 0;
+        return `${state.lang === "en" ? "Byo" : "读秒"} ${formatClock(info[`${side}_byo`] || 0)} ×${periods}`;
+      }
+      return formatClock(0);
+    };
+    ai.classList.remove("hidden");
+    human.classList.remove("hidden");
+    ai.textContent = labelFor(aiColor);
+    human.textContent = labelFor(humanColor);
+    ai.classList.toggle("active", info.to_move === aiColor);
+    human.classList.toggle("active", info.to_move === humanColor);
+    ai.classList.toggle("low", Number(info[aiColor]) <= 30);
+    human.classList.toggle("low", Number(info[humanColor]) <= 30);
   }
 
   function schedulePoll(delay = 800) {
@@ -742,6 +836,8 @@
       const thinking = game.ai_thinking || (game.phase === "scoring" && game.scoring && game.scoring.estimating);
       if (thinking) {
         schedulePoll(750);
+      } else if (game.clock && game.clock.enabled && game.phase === "playing") {
+        schedulePoll(1000);
       } else if (state.extraPolls > 0 && game.phase === "playing" && (!game.candidates || game.candidates.length === 0)) {
         state.extraPolls -= 1;
         schedulePoll(1300);
@@ -848,18 +944,21 @@
     $("#hint-btn").disabled = disabled || !playerTurn();
     $("#estimate-btn").disabled = disabled || !(g.phase === "playing" || g.phase === "scoring");
     $("#undo-btn").disabled = disabled || !g.can_undo || g.phase !== "playing";
+    $("#redo-btn").disabled = disabled || !g.can_redo || g.phase !== "playing";
     $("#pass-btn").disabled = disabled || !playerTurn();
     $("#resign-btn").disabled = disabled || g.phase !== "playing";
-    $("#review-btn").disabled = reviewMode ? false : (g.phase !== "ended" && !(g.review && g.review.status === "running"));
+    $("#review-btn").disabled = reviewMode ? false : !(g.phase === "ended" && g.turn > 0) && !(g.review && g.review.status === "running");
     $("#sgf-btn").disabled = !g;
     $("#review-btn").innerHTML = reviewMode
       ? `<svg viewBox="0 0 24 24"><path d="M9 7 4 12l5 5"/><path d="M4 12h9a7 7 0 0 1 7 7"/></svg> 返回对局`
       : `<svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="m7 15 4-5 3 3 5-7"/></svg> 复盘`;
     $("#numbers-btn").classList.toggle("active", state.showNumbers);
+    $("#flip-btn").classList.toggle("active", state.flip);
     $("#sound-btn").classList.toggle("active", state.sound);
     const board = $("#board");
     board.classList.toggle("disabled", reviewMode || !playerTurn() || g.phase !== "playing");
     $("#model-info").textContent = `KataGo ${state.engine && state.engine.version ? "v" + state.engine.version : ""} · b10c512${state.engine && state.engine.human_model ? " + Human SL" : ""}`;
+    renderClocks(g);
     syncLang();
   }
 
@@ -1122,11 +1221,11 @@
         const v = board[y][x];
         if (!v) continue;
         const vertex = `${COLS[x]}${size - y}`;
-        const px = x0 + x * cell;
-        const py = y0 + y * cell;
+        const pt = pointForVertex(vertex, geom);
+        if (!pt) continue;
         const isLast = vertex === last && last !== "pass";
         const num = state.showNumbers ? moveMap.get(vertex) : null;
-        drawStone(ctx, px, py, cell, v === STONE_BLACK ? "B" : "W", {
+        drawStone(ctx, pt.px, pt.py, cell, v === STONE_BLACK ? "B" : "W", {
           last: isLast,
           number: num,
           dead: dead.has(vertex),
@@ -1256,12 +1355,12 @@
     ctx.textBaseline = "middle";
     for (let x = 0; x < size; x++) {
       const px = x0 + x * cell;
-      ctx.fillText(COLS[x], px, y0 + span + cell * 0.72);
+      ctx.fillText(state.flip ? COLS[size - 1 - x] : COLS[x], px, y0 + span + cell * 0.72);
     }
     ctx.textAlign = "right";
     for (let y = 0; y < size; y++) {
       const py = y0 + y * cell;
-      ctx.fillText(String(size - y), x0 - cell * 0.66, py);
+      ctx.fillText(String(state.flip ? y + 1 : size - y), x0 - cell * 0.66, py);
     }
     // 一点点装饰性坐标角标
     ctx.fillStyle = "rgba(70,45,17,.22)";
@@ -1357,8 +1456,10 @@
         const a = Math.abs(v);
         if (a < 0.12) continue;
         const s = cell * 0.42;
+        const px = x0 + (state.flip ? size - 1 - x : x) * cell;
+        const py = y0 + (state.flip ? size - 1 - y : y) * cell;
         ctx.fillStyle = v > 0 ? `rgba(38,72,49,${0.1 + a * 0.42})` : `rgba(247,239,219,${0.12 + a * 0.46})`;
-        roundRect(ctx, x0 + x * cell - s / 2, y0 + y * cell - s / 2, s, s, s * 0.24);
+        roundRect(ctx, px - s / 2, py - s / 2, s, s, s * 0.24);
         ctx.fill();
       }
     }
@@ -1376,8 +1477,10 @@
         const v = terr[y] && terr[y][x];
         if (!v) continue;
         const s = cell * 0.34;
+        const px = x0 + (state.flip ? size - 1 - x : x) * cell;
+        const py = y0 + (state.flip ? size - 1 - y : y) * cell;
         ctx.fillStyle = v === 1 ? "rgba(36,69,47,.48)" : "rgba(250,244,228,.62)";
-        roundRect(ctx, x0 + x * cell - s / 2, y0 + y * cell - s / 2, s, s, s * 0.3);
+        roundRect(ctx, px - s / 2, py - s / 2, s, s, s * 0.3);
         ctx.fill();
       }
     }
@@ -1457,7 +1560,9 @@
     const num = Number(vertex.slice(1));
     if (x < 0 || !num) return null;
     const y = geom.size - num;
-    return { x, y, px: geom.x0 + x * geom.cell, py: geom.y0 + y * geom.cell };
+    const sx = state.flip ? geom.size - 1 - x : x;
+    const sy = state.flip ? geom.size - 1 - y : y;
+    return { x, y, px: geom.x0 + sx * geom.cell, py: geom.y0 + sy * geom.cell };
   }
 
   function vertexFromEvent(e) {
@@ -1472,7 +1577,9 @@
     const dx = px - (x0 + ix * cell);
     const dy = py - (y0 + iy * cell);
     if (Math.hypot(dx, dy) > cell * 0.52) return null;
-    return `${COLS[ix]}${size - iy}`;
+    const rx = state.flip ? size - 1 - ix : ix;
+    const ry = state.flip ? size - 1 - iy : iy;
+    return `${COLS[rx]}${size - ry}`;
   }
 
   function lastStoneScale(vertex) {
@@ -1588,7 +1695,8 @@
     }
   }
 
-  async function undoMove() {    if (!state.game || state.busy) return;
+  async function undoMove() {
+    if (!state.game || state.busy) return;
     if (!state.game.can_undo) { toast("当前没有可悔的棋"); return; }
     try {
       state.busy = true;
@@ -1600,6 +1708,23 @@
       schedulePoll(1000);
     } catch (err) {
       toast(err.message || "悔棋失败", "error");
+    } finally {
+      state.busy = false;
+      renderChrome();
+    }
+  }
+
+  async function redoMove() {
+    if (!state.game || state.busy) return;
+    if (!state.game.can_redo) { toast("当前没有可重做的棋"); return; }
+    try {
+      state.busy = true;
+      const game = await api(`/api/game/${state.game.id}/redo`, { body: {} });
+      applyGame(game);
+      toast("已重做");
+      schedulePoll(800);
+    } catch (err) {
+      toast(err.message || "重做失败", "error");
     } finally {
       state.busy = false;
       renderChrome();
@@ -1793,6 +1918,34 @@
   }
 
   // ==================== 复盘 ====================
+  async function downloadReviewReport() {
+    if (!state.game) return;
+    if (!state.reviewPayload || state.reviewPayload.status !== "done") {
+      toast("复盘完成后才能导出报告");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/game/${state.game.id}/review/report`);
+      if (!res.ok) {
+        let message = "导出报告失败";
+        try { const data = await res.json(); message = data.error || message; } catch (e) { /* ignore */ }
+        throw new Error(message);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `yixin-review-${state.game.id}.md`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast("复盘报告已开始下载");
+    } catch (err) {
+      toast(err.message || "导出复盘报告失败", "error", 4000);
+    }
+  }
+
   async function startReview() {
     if (!state.game) return;
     if (state.game.phase !== "ended") { toast("请先结束当前对局"); return; }
@@ -1827,6 +1980,15 @@
         state.reviewPayload = data;
         state.game.review = { ...(state.game.review || {}), status: "done", summary: data.summary };
         state.reviewIndex = (data.items && data.items.length) ? data.items.length - 1 : 0;
+        if (data.items && data.items.length) {
+          const last = data.items[data.items.length - 1];
+          state.game.eval = {
+            winrate_black: last.winrate_black,
+            score_lead_black: last.score_lead_black,
+            visits: data.visits || 0,
+            best_move: last.best_move,
+          };
+        }
         state.view = "review";
         state.tab = "review";
         renderAll();
@@ -1871,8 +2033,8 @@
       body.classList.add("hidden");
       running.classList.add("hidden");
       const btn = $("#start-review-inline");
-      btn.disabled = g.phase !== "ended";
-      btn.textContent = g.phase === "ended" ? "开始复盘" : "终局后可复盘";
+      btn.disabled = g.phase !== "ended" || g.turn < 1;
+      btn.textContent = g.phase === "ended" ? (g.turn > 0 ? "开始复盘" : "没有落子") : "终局后可复盘";
       syncLang();
       return;
     }
@@ -1950,7 +2112,18 @@
     state.reviewIndex = clamp(index, 0, state.reviewPayload.items.length - 1);
     state.view = "review";
     state.tab = "review";
+    const item = state.reviewPayload.items[state.reviewIndex];
+    if (item) {
+      state.game.eval = {
+        winrate_black: item.winrate_black,
+        score_lead_black: item.score_lead_black,
+        visits: state.reviewPayload.visits || 0,
+        best_move: item.best_move,
+      };
+    }
     renderReviewPanel();
+    renderChrome();
+    renderWinrate();
     drawBoard();
   }
 
@@ -2104,17 +2277,27 @@
 
   function confirmDialog({ kicker = "确认", title, message, confirmText = "确认", danger = false }) {
     return new Promise((resolve) => {
-      const modal = showModal(`<div class="modal-kicker">${esc(kicker)}</div>
+      const overlay = document.createElement("div");
+      overlay.className = "modal-overlay confirm-overlay";
+      overlay.innerHTML = `<div class="modal"><div class="modal-kicker">${esc(kicker)}</div>
         <h3>${esc(title)}</h3><p>${esc(message)}</p>
         <div class="modal-actions"><button class="ghost-btn" data-cancel>取消</button>
-        <button class="primary-btn small" data-confirm>${esc(confirmText)}</button></div>`);
-      state.modalResolve = resolve;
-      $("[data-cancel]", modal).onclick = () => { closeModal(); };
-      $("[data-confirm]", modal).onclick = () => {
-        state.modalResolve = null;
-        closeModal();
-        resolve(true);
+        <button class="primary-btn small" data-confirm>${esc(confirmText)}</button></div></div>`;
+      document.body.appendChild(overlay);
+      let done = false;
+      const finish = (value) => {
+        if (done) return;
+        done = true;
+        state.confirmOpen = false;
+        state.confirmClose = null;
+        overlay.remove();
+        resolve(value);
       };
+      state.confirmOpen = true;
+      state.confirmClose = () => finish(false);
+      overlay.querySelector("[data-cancel]").onclick = () => finish(false);
+      overlay.querySelector("[data-confirm]").onclick = () => finish(true);
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) finish(false); });
     });
   }
 
@@ -2150,7 +2333,12 @@
       <div class="help-keys" aria-label="键盘快捷键">
         <div class="help-key-row"><kbd>H</kbd><span><b>AI 提示</b>候选点 A/B/C、胜率、目差与变化图</span></div>
         <div class="help-key-row"><kbd>U</kbd><span><b>悔棋</b>撤回你和 AI 各一手</span></div>
+        <div class="help-key-row"><kbd>Y</kbd><span><b>重做</b>恢复悔棋前的局面</span></div>
         <div class="help-key-row"><kbd>P</kbd><span><b>停一手</b>放弃本回合；双方停一手后进入数子</span></div>
+        <div class="help-key-row"><kbd>E</kbd><span><b>形势</b>显示地盘归属与目差预测</span></div>
+        <div class="help-key-row"><kbd>N</kbd><span><b>新对局</b>按当前设定重新开始</span></div>
+        <div class="help-key-row"><kbd>R</kbd><span><b>复盘</b>终局后开始复盘；复盘时返回对局</span></div>
+        <div class="help-key-row"><kbd>←</kbd><kbd>→</kbd><span><b>逐手</b>复盘时跳到上一手 / 下一手</span></div>
         <div class="help-key-row"><kbd>?</kbd><span><b>帮助</b>打开或关闭这个面板</span></div>
         <div class="help-key-row"><kbd>Esc</kbd><span><b>关闭</b>关掉当前弹窗</span></div>
       </div>
@@ -2159,9 +2347,11 @@
         <div class="help-item"><b>形势</b><span>点「形势」显示地盘归属与目差预测，再点一次关闭。</span></div>
         <div class="help-item"><b>复盘</b><span>终局后点「复盘」；点曲线或右侧逐手列表可跳到那一手。</span></div>
         <div class="help-item"><b>棋盘</b><span>右上角数字按钮显示手数；左侧可切换 9/13/19 路与规则。</span></div>
+        <div class="help-item"><b>用时</b><span>对局设定可选 5–60 分钟主时间，并可选 30/60 秒 × 3 次读秒；时间用尽即超时判负。</span></div>
       </div>
-      <p class="help-note">输入框聚焦时快捷键自动让位，不会误触发。所有计算都在本机 KataGo 完成。</p>
+      <p class="help-note">输入框聚焦时快捷键自动让位，不会误触发。所有计算都在本机 KataGo 完成。<span class="help-version">v${esc(state.boot && state.boot.version || "")}</span></p>
       <div class="modal-actions">
+        <button class="ghost-btn" data-diagnostics>运行诊断</button>
         <button class="ghost-btn" data-quit>退出程序</button>
         <button class="primary-btn small" data-ok>知道了</button>
       </div>`, { wide: true });
@@ -2175,6 +2365,7 @@
     const okBtn = $("[data-ok]", modal);
     okBtn.onclick = () => closeModal();
     okBtn.focus();
+    $("[data-diagnostics]", modal).onclick = showDiagnostics;
     $("[data-quit]", modal).onclick = async () => {
       if (!await confirmDialog({
         kicker: "退出",
@@ -2188,28 +2379,410 @@
     };
   }
 
-  async function showRecords() {
-    const modal = showModal(`<div class="modal-kicker">本地棋谱</div><h3>对局记录</h3>
-      <div class="records-list" id="records-list"><p style="color:var(--muted)">正在读取…</p></div>
-      <div class="modal-actions"><button class="ghost-btn" data-close>关闭</button></div>`);
-    $("[data-close]", modal).onclick = closeModal;
+  async function showDiagnostics() {
+    const modal = showModal(`<div class="modal-kicker">本地自检</div><h3>运行诊断</h3>
+      <div class="diag-list" id="diag-list"><div class="records-empty">正在检查引擎、模型与目录…</div></div>
+      <div class="diag-meta" id="diag-meta"></div>
+      <div class="modal-actions">
+        <button class="ghost-btn" data-copy>复制诊断信息</button>
+        <button class="primary-btn small" data-ok>关闭</button>
+      </div>`, { wide: true });
+    $("[data-ok]", modal).onclick = closeModal;
+    let payload = null;
     try {
-      const data = await api("/api/games");
-      const games = data.games || [];
-      const list = $("#records-list");
-      if (!games.length) {
-        list.innerHTML = `<div class="empty-state"><div class="empty-mark">空</div><p>还没有已保存的棋谱</p><span>完成一局后自动归档到 data/games</span></div>`;
-        syncLang();
-        return;
-      }
-      list.innerHTML = games.map((rec) => `<div class="record-row">
-        <div class="record-main"><b>${esc(rec.level || "对局")} · ${rec.size || 19} 路</b><span>${esc((rec.created_at || "").replace("T", " "))} · ${rec.moves || 0} 手</span></div>
-        <span class="record-result">${esc(rec.result || "进行中")}</span>
-        <a class="record-dl" href="/api/records/${encodeURIComponent(rec.file)}/sgf">SGF</a>
-      </div>`).join("");
+      payload = await api("/api/diagnostics", { timeout: 20000 });
+      const icons = { ok: "✓", warn: "!", fail: "×" };
+      $("#diag-list").innerHTML = (payload.checks || []).map((check) => `<div class="diag-row ${esc(check.level)}">
+        <span class="diag-icon">${icons[check.level] || "·"}</span>
+        <span class="diag-main"><b>${esc(check.label)}</b><span>${esc(check.detail)}</span></span>
+      </div>`).join("") || `<div class="records-empty">没有诊断项目</div>`;
+      $("#diag-meta").innerHTML = `KataGo ${esc(payload.engine && payload.engine.version || "—")} · ${esc(payload.engine && payload.engine.backend || "—")} · Python ${esc(payload.python || "")} · ${esc(payload.base || "")}`;
       syncLang();
     } catch (err) {
-      $("#records-list").innerHTML = `<p style="color:var(--red)">${esc(err.message)}</p>`;
+      $("#diag-list").innerHTML = `<div class="records-empty" style="color:var(--red)">${esc(err.message)}</div>`;
+    }
+    $("[data-copy]", modal).onclick = async () => {
+      if (!payload) return;
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+        toast("诊断信息已复制");
+      } catch (err) {
+        toast("复制失败，请手动截图", "error");
+      }
+    };
+  }
+
+  async function showRecords() {
+    const modal = showModal(`<div class="modal-kicker">本地棋谱</div><h3>对局记录</h3>
+      <div class="records-toolbar"><span>棋谱只保存在本机 data/games</span>
+        <button class="record-load" id="import-sgf-btn" type="button">导入 SGF</button>
+        <input id="sgf-file-input" type="file" accept=".sgf,.sgfs,application/x-go-sgf,text/plain" style="display:none">
+      </div>
+      <div class="records-stats" id="records-stats"></div>
+      <div class="record-tools">
+        <input id="record-search" type="search" autocomplete="off" placeholder="搜索棋谱：段位 / 结果 / 日期">
+        <select id="record-sort" aria-label="棋谱排序">
+          <option value="newest">最新优先</option>
+          <option value="oldest">最早优先</option>
+          <option value="moves">手数最多</option>
+          <option value="result">按结果</option>
+        </select>
+      </div>
+      <div class="record-filters" id="record-filters">
+        <button data-filter="all" class="active" type="button">全部</button>
+        <button data-filter="B" type="button">黑胜</button>
+        <button data-filter="W" type="button">白胜</button>
+        <button data-filter="9" type="button">9 路</button>
+        <button data-filter="13" type="button">13 路</button>
+        <button data-filter="19" type="button">19 路</button>
+      </div>
+      <div class="record-batch">
+        <label><input id="select-all-records" type="checkbox"> 全选当前</label>
+        <span id="selected-count"></span>
+        <button id="delete-selected-records" class="record-del" type="button" disabled>删除选中</button>
+      </div>
+      <div id="active-records-wrap">
+        <div class="record-section-title"><span>未完成对局</span><span id="active-record-count"></span></div>
+        <div class="records-list" id="active-records"><div class="records-empty">正在读取…</div></div>
+      </div>
+      <div class="record-section-title"><span>已归档棋谱</span><span id="record-count"></span></div>
+      <div class="records-list" id="records-list"><div class="records-empty">正在读取…</div></div>
+      <div class="modal-actions"><button class="ghost-btn" data-close>关闭</button></div>`, { wide: true });
+    $("[data-close]", modal).onclick = closeModal;
+
+    const fileInput = $("#sgf-file-input");
+    $("#import-sgf-btn").onclick = () => fileInput.click();
+    fileInput.onchange = async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      try {
+        if (file.size > 900000) { toast("SGF 文件过大（上限约 900KB）", "error"); return; }
+        const sgf = await file.text();
+        if (!sgf.trim()) { toast("SGF 文件是空的", "error"); return; }
+        if (state.game && state.game.turn > 0 && state.game.phase !== "ended") {
+          const ok = await confirmDialog({
+            kicker: "导入棋谱",
+            title: "替换当前对局？",
+            message: "导入 SGF 会关闭当前未完成的对局。当前棋局不会自动保存。",
+            confirmText: "导入",
+          });
+          if (!ok) return;
+        }
+        const game = await api("/api/import", { body: { sgf }, timeout: 30000 });
+        closeModal();
+        state.reviewPayload = null;
+        state.reviewIndex = null;
+        applyGame(game, { initial: true });
+        setTab("review");
+        renderAll();
+        toast(`已导入 ${game.turn} 手，可开始复盘`);
+      } catch (err) {
+        toast(err.message || "SGF 导入失败", "error", 5000);
+      } finally {
+        fileInput.value = "";
+      }
+    };
+
+    try {
+      const [data, stats] = await Promise.all([
+        api("/api/games"),
+        api("/api/stats").catch(() => null),
+      ]);
+      const active = data.active_games || [];
+      const games = data.games || [];
+      const renderStats = (st) => {
+        if (st && st.total) {
+          $("#records-stats").innerHTML = `<span>已归档 <b>${st.total}</b> 局</span>
+            <span>黑胜 <b>${st.black_wins || 0}</b></span>
+            <span>白胜 <b>${st.white_wins || 0}</b></span>
+            <span>和棋 <b>${st.draws || 0}</b></span>
+            <span>平均 <b>${st.avg_moves || 0}</b> 手</span>`;
+        } else {
+          $("#records-stats").innerHTML = `<span>暂无归档统计</span>`;
+        }
+        const levels = Object.entries((st && st.by_level) || {}).sort((a, b) => b[1] - a[1]);
+        if (levels.length) {
+          const extra = document.createElement("span");
+          extra.innerHTML = `最常下 <b>${esc(levels[0][0])}</b> ${levels[0][1]} 局`;
+          $("#records-stats").appendChild(extra);
+        }
+      };
+      renderStats(stats);
+      const activeWrap = $("#active-records-wrap");
+      const activeList = $("#active-records");
+      $("#active-record-count").textContent = active.length ? `${active.length} 局` : "";
+      if (!active.length) {
+        activeWrap.classList.add("hidden");
+      } else {
+        activeList.innerHTML = active.map((rec) => `<div class="record-row active">
+          <div class="record-main"><b>${esc(rec.level || "对局")} · ${rec.size || 19} 路</b>
+            <span>${rec.moves || 0} 手 · ${rec.phase === "scoring" ? "等待数子" : "进行中"}</span></div>
+          <button class="record-load" data-resume="${esc(rec.id)}" type="button">继续</button>
+          <button class="record-del" data-abandon="${esc(rec.id)}" type="button" title="放弃这局">放弃</button>
+        </div>`).join("");
+      }
+      const list = $("#records-list");
+      const searchInput = $("#record-search");
+      const sortSelect = $("#record-sort");
+      const selectAll = $("#select-all-records");
+      const selectedCount = $("#selected-count");
+      const deleteSelected = $("#delete-selected-records");
+      const selected = new Set();
+      let visibleFiles = [];
+      let recordFilter = "all";
+      const updateBatchBar = () => {
+        const visibleSelected = visibleFiles.filter((f) => selected.has(f)).length;
+        selectAll.checked = visibleFiles.length > 0 && visibleSelected === visibleFiles.length;
+        selectAll.indeterminate = visibleSelected > 0 && visibleSelected < visibleFiles.length;
+        selectedCount.textContent = selected.size ? `已选 ${selected.size} 局` : "";
+        deleteSelected.disabled = selected.size === 0;
+      };
+      const showRecordDetail = (rec) => {
+        if (!rec) return;
+        const overlay = document.createElement("div");
+        overlay.className = "modal-overlay detail-overlay";
+        const created = (rec.created_at || "").replace("T", " ");
+        const rules = rec.rules === "japanese" ? "日本规则" : "中国规则";
+        const komi = rec.komi == null ? "—" : `${Number(rec.komi).toFixed(1)} 目`;
+        const handicap = Number(rec.handicap) > 0 ? `${rec.handicap} 子` : "无";
+        const time = Number(rec.time_limit) > 0 ? `${Math.round(Number(rec.time_limit) / 60)} 分钟` : "不限时";
+        const byo = Number(rec.byo_yomi) > 0
+          ? (state.lang === "en" ? `, Byo ${rec.byo_yomi}s ×3` : `，读秒 ${rec.byo_yomi} 秒 ×3`)
+          : "";
+        const color = rec.player_color === "W" ? "执白" : "执黑";
+        overlay.innerHTML = `<div class="modal detail-modal" role="dialog" aria-modal="true">
+          <div class="modal-kicker">棋谱详情</div>
+          <h3>${esc(rec.level || "对局")} · ${rec.size || 19} 路</h3>
+          <div class="detail-grid">
+            <div><span>对局时间</span><b>${esc(created)}</b></div>
+            <div><span>结果</span><b>${esc(rec.result || "进行中")}</b></div>
+            <div><span>手数</span><b>${rec.moves || 0} 手</b></div>
+            <div><span>规则</span><b>${rules}</b></div>
+            <div><span>贴目</span><b>${komi}</b></div>
+            <div><span>让子</span><b>${handicap}</b></div>
+            <div><span>对局用时</span><b>${time}${byo}</b></div>
+            <div><span>执子</span><b>${color}</b></div>
+          </div>
+          <div class="modal-actions">
+            <button class="ghost-btn" data-close>关闭</button>
+            <button class="record-del" data-detail-del>删除</button>
+            <button class="record-load" data-detail-load>载入复盘</button>
+          </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        const close = () => {
+          overlay.remove();
+          state.detailOpen = false;
+          state.detailClose = null;
+        };
+        state.detailOpen = true;
+        state.detailClose = close;
+        overlay.querySelector("[data-close]").onclick = close;
+        overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+        overlay.querySelector("[data-detail-load]").onclick = () => {
+          close();
+          const btn = Array.from($("#records-list").querySelectorAll("[data-load]")).find((b) => b.dataset.load === rec.file);
+          if (btn) btn.click();
+        };
+        overlay.querySelector("[data-detail-del]").onclick = () => {
+          close();
+          const btn = Array.from($("#records-list").querySelectorAll("[data-del]")).find((b) => b.dataset.del === rec.file);
+          if (btn) btn.click();
+        };
+      };
+      const renderArchived = () => {
+        let shown = games.filter((rec) => recordFilter === "all"
+          || ((recordFilter === "B" || recordFilter === "W") && rec.winner === recordFilter)
+          || String(rec.size) === recordFilter);
+        const q = (searchInput.value || "").trim().toLowerCase();
+        if (q) {
+          shown = shown.filter((rec) => [rec.level, rec.result, rec.created_at, rec.size, rec.moves]
+            .join(" ").toLowerCase().includes(q));
+        }
+        const sortBy = sortSelect.value;
+        if (sortBy === "oldest") shown = shown.slice().sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+        else if (sortBy === "moves") shown = shown.slice().sort((a, b) => (b.moves || 0) - (a.moves || 0));
+        else if (sortBy === "result") shown = shown.slice().sort((a, b) => String(a.result || "").localeCompare(String(b.result || "")));
+        visibleFiles = shown.map((rec) => rec.file);
+        $("#record-count").textContent = `${shown.length} / ${games.length} 局`;
+        if (!shown.length) {
+          list.innerHTML = `<div class="records-empty">没有符合条件的棋谱。</div>`;
+        } else {
+          list.innerHTML = shown.map((rec) => `<div class="record-row">
+            <input type="checkbox" class="record-select" data-select="${esc(rec.file)}" ${selected.has(rec.file) ? "checked" : ""} aria-label="选择棋谱">
+            <div class="record-main" data-detail="${esc(rec.file)}"><b>${esc(rec.level || "对局")} · ${rec.size || 19} 路</b><span>${esc((rec.created_at || "").replace("T", " "))} · ${rec.moves || 0} 手</span></div>
+            <span class="record-result">${esc(rec.result || "进行中")}</span>
+            <button class="record-load" data-load="${esc(rec.file)}" type="button">载入复盘</button>
+            <button class="record-copy" data-copy-sgf="${esc(rec.file)}" type="button" title="复制 SGF 到剪贴板">复制</button>
+            <button class="record-del" data-del="${esc(rec.file)}" type="button" title="删除棋谱">删除</button>
+            <a class="record-dl" href="/api/records/${encodeURIComponent(rec.file)}/sgf">SGF</a>
+          </div>`).join("");
+        }
+        updateBatchBar();
+        syncLang();
+      };
+      searchInput.oninput = renderArchived;
+      sortSelect.onchange = renderArchived;
+      selectAll.onchange = () => {
+        if (selectAll.checked) visibleFiles.forEach((f) => selected.add(f));
+        else visibleFiles.forEach((f) => selected.delete(f));
+        renderArchived();
+      };
+      deleteSelected.onclick = async () => {
+        const files = Array.from(selected);
+        if (!files.length) return;
+        const ok = await confirmDialog({
+          kicker: "批量删除",
+          title: `删除选中的 ${files.length} 局棋谱？`,
+          message: "选中的棋谱文件会从 data/games 中删除，无法恢复。",
+          confirmText: "删除",
+        });
+        if (!ok) return;
+        try {
+          const res = await api("/api/records/delete", { body: { files } });
+          const removed = new Set(res.deleted || []);
+          for (let i = games.length - 1; i >= 0; i--) if (removed.has(games[i].file)) games.splice(i, 1);
+          selected.clear();
+          renderStats(res.stats);
+          renderArchived();
+          toast(`已删除 ${res.deleted ? res.deleted.length : 0} 局棋谱`);
+        } catch (err) {
+          toast(err.message || "批量删除失败", "error");
+        }
+      };
+      list.addEventListener("change", (e) => {
+        const cb = e.target.closest("[data-select]");
+        if (!cb) return;
+        if (cb.checked) selected.add(cb.dataset.select);
+        else selected.delete(cb.dataset.select);
+        updateBatchBar();
+      });
+      $("#record-filters").onclick = (e) => {
+        const btn = e.target.closest("[data-filter]");
+        if (!btn) return;
+        recordFilter = btn.dataset.filter;
+        $$("#record-filters [data-filter]").forEach((b) => b.classList.toggle("active", b === btn));
+        renderArchived();
+      };
+      if (!games.length) {
+        list.innerHTML = `<div class="records-empty">还没有已归档的棋谱。下完一局后会自动保存到这里。</div>`;
+        $("#record-count").textContent = "";
+      } else {
+        renderArchived();
+      }
+      activeList.onclick = async (e) => {
+        const abandon = e.target.closest("[data-abandon]");
+        if (abandon) {
+          const ok = await confirmDialog({
+            kicker: "放弃对局",
+            title: "确定放弃这局？",
+            message: "这局不会归档，棋谱会被删除，且无法恢复。",
+            confirmText: "放弃",
+          });
+          if (!ok) return;
+          try {
+            const wasCurrent = state.game && state.game.id === abandon.dataset.abandon;
+            await api(`/api/game/${encodeURIComponent(abandon.dataset.abandon)}/abandon`, { body: {} });
+            if (wasCurrent) {
+              closeModal();
+              const game = await createGame({ silent: true, noConfirm: true });
+              applyGame(game, { initial: true });
+            } else {
+              closeModal();
+              await showRecords();
+            }
+            toast("已放弃未完成对局");
+          } catch (err) {
+            toast(err.message || "放弃对局失败", "error");
+          }
+          return;
+        }
+        const btn = e.target.closest("[data-resume]");
+        if (!btn) return;
+        try {
+          if (state.game && state.game.turn > 0 && state.game.phase !== "ended") {
+            const ok = await confirmDialog({
+              kicker: "继续对局",
+              title: "切换到另一局？",
+              message: "当前未完成的对局会保留在后台，可以稍后从「棋谱」再次进入。",
+              confirmText: "继续",
+            });
+            if (!ok) return;
+          }
+          const game = await api(`/api/game/${encodeURIComponent(btn.dataset.resume)}`);
+          closeModal();
+          state.reviewPayload = null;
+          state.reviewIndex = null;
+          applyGame(game, { initial: true });
+          toast("已继续未完成对局");
+        } catch (err) {
+          toast(err.message || "载入对局失败", "error");
+        }
+      };
+      list.onclick = async (e) => {
+        const detail = e.target.closest("[data-detail]");
+        if (detail) {
+          showRecordDetail(games.find((g) => g.file === detail.dataset.detail));
+          return;
+        }
+        const copy = e.target.closest("[data-copy-sgf]");
+        if (copy) {
+          try {
+            const res = await fetch(`/api/records/${encodeURIComponent(copy.dataset.copySgf)}/sgf`);
+            if (!res.ok) throw new Error("读取 SGF 失败");
+            const text = await res.text();
+            await navigator.clipboard.writeText(text);
+            toast("SGF 已复制");
+          } catch (err) {
+            toast(err.message || "复制失败，请直接用 SGF 下载", "error");
+          }
+          return;
+        }
+        const del = e.target.closest("[data-del]");
+        if (del) {
+          const ok = await confirmDialog({
+            kicker: "删除棋谱",
+            title: "确定删除这局棋谱？",
+            message: "棋谱文件会从 data/games 中删除，无法恢复。",
+            confirmText: "删除",
+          });
+          if (!ok) return;
+          try {
+            const res = await api(`/api/records/${encodeURIComponent(del.dataset.del)}/delete`, { body: {} });
+            const idx = games.findIndex((g) => g.file === del.dataset.del);
+            if (idx >= 0) games.splice(idx, 1);
+            selected.delete(del.dataset.del);
+            renderStats(res.stats);
+            renderArchived();
+            toast("棋谱已删除");
+          } catch (err) {
+            toast(err.message || "删除棋谱失败", "error");
+          }
+          return;
+        }
+        const btn = e.target.closest("[data-load]");
+        if (!btn) return;
+        try {
+          const game = await api(`/api/records/${encodeURIComponent(btn.dataset.load)}/load`, { body: {} });
+          closeModal();
+          state.reviewPayload = null;
+          state.reviewIndex = null;
+          applyGame(game, { initial: true });
+          if (game.turn > 0) {
+            await startReview();
+            toast("棋谱已载入，正在生成复盘");
+          } else {
+            toast("棋谱已载入，但这局没有落子，无法复盘");
+          }
+        } catch (err) {
+          toast(err.message || "载入棋谱失败", "error");
+        }
+      };
+      syncLang();
+    } catch (err) {
+      const message = `<div class="records-empty" style="color:var(--red)">${esc(err.message)}</div>`;
+      $("#records-list").innerHTML = message;
+      $("#active-records").innerHTML = message;
       syncLang();
     }
   }
@@ -2356,6 +2929,13 @@
   function updateSoundButton() {
     $("#sound-btn").classList.toggle("active", state.sound);
     $("#sound-btn").title = state.sound ? "关闭落子音效" : "开启落子音效";
+    syncLang();
+  }
+
+  function updateFlipButton() {
+    $("#flip-btn").classList.toggle("active", state.flip);
+    $("#flip-btn").title = state.flip ? "复位棋盘方向" : "翻转棋盘方向";
+    $("#flip-btn").setAttribute("aria-label", $("#flip-btn").title);
     syncLang();
   }
 

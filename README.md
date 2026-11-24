@@ -7,14 +7,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-3b82f6?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4?style=flat-square)](#运行要求)
 [![Engine](https://img.shields.io/badge/engine-KataGo%201.18.1-16a34a?style=flat-square)](https://github.com/lightvector/KataGo)
-[![Stars](https://img.shields.io/github/stars/Qin-z-x/yixin-go?style=flat-square&color=e0b44c)](https://github.com/Qin-z-x/yixin-go/stargazers)
+[![Release](https://img.shields.io/github/v/release/Qin-Z-x/yixin-go?style=flat-square&color=e0b44c)](https://github.com/Qin-Z-x/yixin-go/releases/latest)
+[![Stars](https://img.shields.io/github/stars/Qin-Z-x/yixin-go?style=flat-square&color=e0b44c)](https://github.com/Qin-Z-x/yixin-go/stargazers)
 
 <p align="center">
   <img src="docs/screenshots/01-home.png" width="49%" alt="中文界面">
   <img src="docs/screenshots/02-english.png" width="49%" alt="English UI">
+  <img src="docs/screenshots/03-hint.png" width="49%" alt="AI 提示：A/B/C 候选点">
+  <img src="docs/screenshots/04-estimate.png" width="49%" alt="形势判断">
 </p>
 
-<sub>实机截图：19 路 / 职业二段默认档（b10c512，每手 400 次搜索），引擎在本地 RTX 5060 Laptop 上已就绪。右上角可切中英文，也可以用 <code>?lang=en</code> 直接进英文界面。</sub>
+<sub>实机截图（Windows 11 / RTX 5060 Laptop / OpenCL）：19 路、职业二段默认档（b10c512，每手 400 次搜索），引擎就绪耗时见左下角。第三、四张是 AI 提示（A/B/C 候选点）与形势判断。右上角可切中英文，也可以用 <code>?lang=en</code> 直接进英文界面。</sub>
 
 ---
 
@@ -32,7 +35,7 @@
 
 ## 60 秒开始
 
-1. 到 [Releases](https://github.com/Qin-z-x/yixin-go/releases/latest) 下载 `Yixin-Go-Sparring-*-portable.zip`，解压到任意目录（**不要**放在中文路径或受保护的 `Program Files` 下）。
+1. 到 [Releases](https://github.com/Qin-Z-x/yixin-go/releases/latest) 下载 `Yixin-Go-Sparring-*-portable.zip`，解压到任意目录（**不要**放在中文路径或受保护的 `Program Files` 下）。
 2. 双击 `启动围棋陪练.bat`。
 3. 等 10–30 秒，引擎完成 GPU 预热，Edge 会以应用窗口打开棋盘。
 
@@ -61,13 +64,21 @@
 
 ## 功能
 
-- **对弈**：19 / 13 / 9 路，中国 / 日本规则，执黑执白，让 2–9 子，贴目可调。
+- **对弈**：19 / 13 / 9 路，中国 / 日本规则，执黑执白，让 2–9 子，贴目可调；可选 5–60 分钟主时间，并可选 30/60 秒 × 3 次读秒，双方时钟独立，时间用尽即超时判负。
 - **AI 提示**：按 `H`，右侧给出 A/B/C 三个候选点的胜率、目差和变化图——可以直接用来对答案。
 - **形势判断**：一键显示 KataGo 的地盘归属和目差预测，点第二次关闭。
 - **死活数子**：双方停一手后自动标记死子，点棋子可手动增删，确认即终局。
 - **AI 复盘**：终局后逐手分析：胜率损失曲线、好棋 / 失误标记、AI 首选与变化图，点曲线或棋谱任意一手都能跳回去看。
-- **棋谱管理**：随时导出标准 SGF；结束的对局自动存到 `data/games/`。
+- **棋谱库**：结束的对局自动归档到 `data/games/`；可以直接载入旧棋谱重新复盘，也可以导入野狐 / 弈星 / OGS 等工具导出的 SGF 主线；支持搜索段位/结果/日期，按最新/手数/结果排序，按黑胜 / 白胜 / 9·13·19 路筛选，一键复制或下载 SGF，也支持查看棋谱详情、单条删除、勾选批量删除和放弃未完成对局。
+- **统计**：棋谱库显示总局数、黑白胜负、平均手数，以及最常下的档位。
+- **悔棋与重做**：悔棋撤回你和 AI 各一手，重做可以恢复悔棋前的局面，误操作不必重下。
+- **翻转棋盘**：右上角翻转按钮可从白棋视角看棋盘，坐标、棋子、提示和点击落点会一起翻转。
+- **中断续弈**：每一步都会把未完成对局保存到 `data/active/`。关掉程序或服务重启后，从「棋谱」→「未完成对局」点「继续」即可接着下，AI 也会接着应手。
+- **复盘报告**：一键导出 Markdown 复盘报告（平均损失、关键失误、逐手表），方便存档或分享。
+- **本地自检**：帮助面板里的「运行诊断」会检查引擎、主模型、Human SL 模型、配置和棋谱目录，并给出一键复制的诊断信息；棋谱库还会显示黑胜 / 白胜 / 平均手数统计。
 - **纯本地**：不发任何请求到云端，断网也能下。
+- **异常自恢复**：引擎意外退出会自动重启；正在等待的 AI 应手会在引擎恢复后自动重算（最多重试 2 次），并显示更准确的退出原因。
+- **窄窗口适配**：1024px 左右窗口下操作栏自动换行；更窄窗口下等级列表改为两列，按钮和棋谱区域不会横向溢出。
 
 ## 和别的 AI 围棋工具比
 
@@ -88,7 +99,13 @@ Sabaki、Lizzie 都是很成熟的棋盘与分析师工具，功能比弈心全�
 | --- | --- |
 | `H` | AI 提示（A/B/C 候选点） |
 | `U` | 悔棋 |
+| `Y` | 重做 |
 | `P` | 停一手 |
+| `E` | 形势判断 |
+| `N` | 新对局 |
+| `R` | 复盘 / 返回对局 |
+| `←` `→` | 复盘时上一手 / 下一手 |
+| `?` | 帮助 |
 | `Esc` | 关闭弹窗 |
 
 ## 技术细节
@@ -98,6 +115,8 @@ Sabaki、Lizzie 都是很成熟的棋盘与分析师工具，功能比弈心全�
 - **前端**：原生 Canvas 绘制棋盘，高 DPI 自适应，木纹与棋子程序生成，无外部图片、无 CDN、无 Web 字体。
 - **并发**：对弈、预分析、复盘、数子分属独立线程，引擎内部有请求队列与优先级，复盘不会卡住当前对局。
 - **规则**：中国规则面积计分，日本规则地域 + 提子；让子棋白棋不额外加让子补偿。
+- **持久化**：未结束对局写入 `data/active/<id>.json`，结束时归档到 `data/games/`；载入棋谱会重建棋盘并可直接复盘。
+- **SGF**：内置主线导入器，支持常见 `SZ/KM/RU/HA/AB/AW/PL/RE` 与 B/W 落子；变化图会被跳过，保留主线。
 
 ## 运行要求
 
@@ -113,7 +132,11 @@ Sabaki、Lizzie 都是很成熟的棋盘与分析师工具，功能比弈心全�
 
 **浏览器没自动打开？** 手动访问 `http://127.0.0.1:8765`。端口被占用时会自动尝试 8766–8784，控制台会打印实际地址。
 
-**棋谱在哪？** `data/games/`，同时存 JSON（含 SGF 文本）和可下载的 SGF。
+**棋谱在哪？** `data/games/`，同时存 JSON（含 SGF 文本）和可下载的 SGF；未完成对局在 `data/active/`，重启后可从「棋谱」继续。
+
+**能导入 SGF 吗？** 能。打开「棋谱」→「导入 SGF」，选择 `.sgf` 文件。当前导入器读取第一棵 game tree 的主线；带复杂变化图的棋谱会保留主线、跳过分支。
+
+**能导出复盘吗？** 能。终局并完成 AI 复盘后，右侧复盘面板底部点「导出复盘报告」，下载 Markdown 文件。
 
 **能离线吗？** 能。模型和引擎都在本地，对局、提示、复盘都不需要网络。
 

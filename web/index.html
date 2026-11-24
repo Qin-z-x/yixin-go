@@ -95,6 +95,25 @@
             <button data-value="japanese">日本</button>
           </div>
         </div>
+        <div class="setting-row">
+          <label for="time-limit-input">对局用时</label>
+          <select id="time-limit-input">
+            <option value="0">不限时</option>
+            <option value="300">5 分钟</option>
+            <option value="600">10 分钟</option>
+            <option value="1200">20 分钟</option>
+            <option value="1800">30 分钟</option>
+            <option value="3600">60 分钟</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label for="byo-yomi-input">读秒</label>
+          <select id="byo-yomi-input">
+            <option value="0">无读秒</option>
+            <option value="30">30 秒 × 3</option>
+            <option value="60">60 秒 × 3</option>
+          </select>
+        </div>
         <button class="primary-btn" id="new-game-btn">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           开始新对局
@@ -143,6 +162,9 @@
           <button class="icon-btn" id="numbers-btn" title="显示手数" aria-label="显示手数">
             <svg viewBox="0 0 24 24"><path d="M7 7h4v10H7M14 9.5c0-1.5 1-2.5 2.5-2.5S19 8 19 9.5c0 2.5-5 4-5 7.5h5"/></svg>
           </button>
+          <button class="icon-btn" id="flip-btn" title="翻转棋盘" aria-label="翻转棋盘">
+            <svg viewBox="0 0 24 24"><path d="M4 8h13M14 5l3 3-3 3"/><path d="M20 16H7M10 13l-3 3 3 3"/></svg>
+          </button>
           <button class="icon-btn" id="sound-btn" title="落子音效" aria-label="落子音效">
             <svg viewBox="0 0 24 24"><path d="M5 10v4h3l4 4V6L8 10z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>
           </button>
@@ -161,6 +183,7 @@
             <span class="player-sub" id="ai-sub">主模型 · 400 visits</span>
           </div>
           <div class="capture-box"><span class="capture-stone white"></span><b id="ai-captures">0</b><em>提子</em></div>
+          <div class="game-clock hidden" id="ai-clock">--:--</div>
           <button class="retry-ai hidden" id="ai-retry-btn">重试 AI</button>
           <div class="turn-indicator" id="ai-turn"><span></span>等待中</div>
         </div>
@@ -188,6 +211,7 @@
             <span class="player-sub" id="human-sub">思考中，落子无悔</span>
           </div>
           <div class="capture-box"><span class="capture-stone black"></span><b id="human-captures">0</b><em>提子</em></div>
+          <div class="game-clock hidden" id="human-clock">--:--</div>
           <div class="turn-indicator active" id="human-turn"><span></span>轮到你</div>
         </div>
       </section>
@@ -219,6 +243,11 @@
           <svg viewBox="0 0 24 24"><path d="M9 7 4 12l5 5"/><path d="M4 12h9a7 7 0 0 1 7 7"/></svg>
           悔棋
           <kbd>U</kbd>
+        </button>
+        <button class="action-btn" id="redo-btn">
+          <svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5"/><path d="M20 12h-9a7 7 0 0 0-7 7"/></svg>
+          重做
+          <kbd>Y</kbd>
         </button>
         <button class="action-btn" id="pass-btn">
           <svg viewBox="0 0 24 24"><path d="M6 12h12"/><path d="M9 8h6M9 16h6"/></svg>
@@ -315,6 +344,9 @@
           <div class="review-list-head"><span>逐手明细</span><span id="review-progress">—</span></div>
           <div class="review-list" id="review-list"></div>
           <div class="review-detail hidden" id="review-detail"></div>
+          <div class="review-export-row">
+            <button class="ghost-btn" id="export-review-btn" type="button">导出复盘报告</button>
+          </div>
         </div>
         <div class="review-running hidden" id="review-running">
           <div class="ink-spinner"></div>
