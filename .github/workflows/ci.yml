@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} · py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        python: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Show interpreter
+        run: python -VV
+
+      - name: Unit tests (no GPU / no engine required)
+        run: python -m unittest discover -s tests -v
+
+      - name: Byte-compile every source file
+        run: python -m compileall -q server.py go_engine.py katago_engine.py levels.py web
+
+  hygiene:
+    name: repo hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No binaries or models committed
+        run: |
+          set -e
+          if git ls-files | grep -Ei '(\.exe$|\.bin(\.gz)?$|^models/|^engine/|^data/|^dist/|^logs/)'; then
+            echo "::error::binary artifact tracked in git — they belong in Release assets"
+            exit 1
+          fi
+          echo "ok: source-only tree"
+
+      - name: User-facing files have no unreplaced repository placeholder
+        run: |
+          set -e
+          fail=0
+          for f in README.md README.en.md SECURITY.md .github/ISSUE_TEMPLATE/config.yml; do
+            if [ -f "$f" ] && grep -nE '__[A-Z]+__' "$f"; then
+              echo "::error file=$f::unreplaced repository placeholder"
+              fail=1
+            fi
+          done
+          exit $fail

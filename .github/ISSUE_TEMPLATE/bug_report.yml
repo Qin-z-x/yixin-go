@@ -1,0 +1,72 @@
+name: Bug report
+description: 程序出错、界面异常、打包版跑不起来——都报这里
+title: "[bug] "
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先把 `调试启动.bat` 跑一遍，把控制台报错贴上来，定位快十倍。
+        提之前搜一下已有 issue，避免重复。
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 一句话说现象，再补细节。例如"点提示后右侧一直显示等待分析，30 秒没结果"。
+      placeholder: 现象 + 你期待的结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 按顺序写，越具体越好。能附最小棋谱更好。
+      placeholder: |
+        1. 新建对局：19 路 / 中国规则 / 职业2段 / 执黑
+        2. 黑 D4 落子，等 AI 应手
+        3. 按 H
+        4. 右侧一直显示"等待 AI 分析"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 使用的版本
+      description: Release 版本号，或直接写 committed 的 commit sha
+      placeholder: v0.1.0 portable / commit abc1234
+    validations:
+      required: true
+
+  - type: dropdown
+    id: gpu
+    attributes:
+      label: 显卡
+      options:
+        - NVIDIA 独显
+        - AMD 独显
+        - Intel / AMD 核显
+        - 不确定
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或控制台输出
+      description: "`logs/katago.log` 末尾 20 行，或 `调试启动.bat` 的报错。注意先把个人路径打码。"
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 确认
+      options:
+        - label: 我搜过已有 issue，没有重复
+          required: true
+        - label: 我用的是最新 Release 或最新 main
+          required: true

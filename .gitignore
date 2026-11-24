@@ -1,0 +1,57 @@
+# ── 运行期产物 ──────────────────────────────
+/data/
+/logs/
+*.log
+*.tmp
+
+# ── 打包与构建产物 ──────────────────────────
+/dist/
+/build/
+/_internal/
+*.exe
+*.pdb
+
+# ── 引擎与神经网络模型（体积大，按 docs 说明单独下载）──
+/engine/
+/models/
+
+# ── Python ──────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── 本地工具与临时文件 ──────────────────────
+/.tools/
+/tmp/
+*.zip
+*.7z
+/弈心围棋陪练-便携版/
+/弈心围棋陪练-便携版.zip
+
+# ── 保留的仓库资源 ──────────────────────────
+!/assets/
+
+# ── 内部运营文档（不随开源仓库发布）──────────
+/docs/community/
+/docs/audit/
+/docs/AUDIT-REPORT.md
+
+# ── 编辑器 / 系统 ───────────────────────────
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── 与本项目无关的本地实验（DSH 插件）─────
+/dsh-plugins/
+
+# ── 不属于本仓库的并行项目（勿发布）─────
+/tc264-studio/

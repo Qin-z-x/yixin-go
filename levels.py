@@ -1,0 +1,107 @@
+"""可选的陪练强度。职业档使用主模型，业余档使用 KataGo Human SL 人类风格模型。"""
+
+LEVELS = [
+    {
+        "id": "k15",
+        "name": "15级",
+        "short": "15K",
+        "group": "入门",
+        "visits": 6,
+        "human": True,
+        "profile": "rank_15k",
+        "temperature": 1.02,
+        "desc": "刚学会规则，会下得比较随意。",
+    },
+    {
+        "id": "k10",
+        "name": "10级",
+        "short": "10K",
+        "group": "入门",
+        "visits": 6,
+        "human": True,
+        "profile": "rank_10k",
+        "temperature": 1.0,
+        "desc": "常见定式会一点，战斗容易失误。",
+    },
+    {
+        "id": "k5",
+        "name": "5级",
+        "short": "5K",
+        "group": "进阶",
+        "visits": 8,
+        "human": True,
+        "profile": "rank_5k",
+        "temperature": 0.98,
+        "desc": "有基本大局观，擅长局部接触战。",
+    },
+    {
+        "id": "k1",
+        "name": "1级",
+        "short": "1K",
+        "group": "进阶",
+        "visits": 8,
+        "human": True,
+        "profile": "rank_1k",
+        "temperature": 0.94,
+        "desc": "接近段位，官子与死活都有章法。",
+    },
+    {
+        "id": "d1",
+        "name": "业余1段",
+        "short": "1D",
+        "group": "段位",
+        "visits": 10,
+        "human": True,
+        "profile": "rank_1d",
+        "temperature": 0.9,
+        "utility_weight": 0.18,
+        "desc": "人类风格，兼顾棋理与胜负。",
+    },
+    {
+        "id": "d3",
+        "name": "业余3段",
+        "short": "3D",
+        "group": "段位",
+        "visits": 16,
+        "human": True,
+        "profile": "rank_3d",
+        "temperature": 0.84,
+        "utility_weight": 0.34,
+        "desc": "强业余棋手，善于抓住过分之手。",
+    },
+    {
+        "id": "pro2",
+        "name": "职业2段",
+        "short": "PRO 2D",
+        "group": "职业",
+        "visits": 400,
+        "human": False,
+        "guarantee": True,
+        "desc": "主模型 b10c512，每手 400 次搜索，默认档位。",
+    },
+    {
+        "id": "pro5",
+        "name": "职业5段",
+        "short": "PRO 5D",
+        "group": "职业",
+        "visits": 800,
+        "human": False,
+        "desc": "更深搜索，读秒与复杂战斗更强。",
+    },
+    {
+        "id": "pro9",
+        "name": "顶尖职业",
+        "short": "TOP PRO",
+        "group": "职业",
+        "visits": 1600,
+        "human": False,
+        "desc": "全力模式，接近 KataGo 实战强度。",
+    },
+]
+
+LEVEL_BY_ID = {level["id"]: level for level in LEVELS}
+DEFAULT_LEVEL = "pro2"
+
+
+def public_levels() -> list[dict]:
+    return [{k: v for k, v in level.items() if k not in ("profile",)} for level in LEVELS]

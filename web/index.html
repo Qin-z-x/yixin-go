@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d100e">
+  <title>弈心 · 围棋陪练</title>
+  <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="app-shell">
+    <aside class="rail">
+      <div class="brand">
+        <div class="seal">弈</div>
+        <div class="brand-text">
+          <h1>弈心</h1>
+          <p>围棋陪练 · 职业强度</p>
+        </div>
+      </div>
+
+      <nav class="rail-nav" aria-label="主导航">
+        <button class="nav-btn active" data-view="play">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5v15M4.5 12h15"/></svg>
+          对弈
+        </button>
+        <button class="nav-btn" data-view="review">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="m7 15 4-5 3 3 5-7"/></svg>
+          复盘
+        </button>
+        <button class="nav-btn" id="records-btn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h9l4 4V21H6z"/><path d="M14.5 3.5V8H19M9 12h6M9 16h6"/></svg>
+          棋谱
+        </button>
+      </nav>
+
+      <section class="rail-section">
+        <div class="section-head">
+          <span class="section-label">陪练强度</span>
+          <span class="section-note">职业档默认</span>
+        </div>
+        <div id="level-list" class="level-list" role="radiogroup" aria-label="选择陪练强度"></div>
+        <p class="level-desc" id="level-desc">职业二段：主模型 b10c512，每手 400 次搜索，默认陪练强度。</p>
+      </section>
+
+      <button class="rail-settings-toggle" id="settings-toggle" type="button" aria-expanded="false" aria-controls="game-settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="8" cy="7" r="1.5"/><circle cx="15.5" cy="12" r="1.5"/><circle cx="10" cy="17" r="1.5"/></svg>
+        <span>对局设定</span>
+        <span class="toggle-caret" aria-hidden="true">▾</span>
+      </button>
+
+      <section class="rail-section settings" id="game-settings">
+        <div class="section-head">
+          <span class="section-label">对局设定</span>
+          <span class="section-note">本地 AI</span>
+        </div>
+        <div class="setting-row">
+          <span>棋盘</span>
+          <div class="segmented" id="size-seg" data-setting="size">
+            <button data-value="9">9路</button>
+            <button data-value="13">13路</button>
+            <button data-value="19" class="active">19路</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span>执子</span>
+          <div class="segmented" id="color-seg" data-setting="player_color">
+            <button data-value="B" class="active">执黑</button>
+            <button data-value="W">执白</button>
+          </div>
+        </div>
+        <div class="setting-row dual">
+          <label>让子
+            <select id="handicap-input">
+              <option value="0">无</option>
+              <option value="2">2 子</option>
+              <option value="3">3 子</option>
+              <option value="4">4 子</option>
+              <option value="5">5 子</option>
+              <option value="6">6 子</option>
+              <option value="7">7 子</option>
+              <option value="8">8 子</option>
+              <option value="9">9 子</option>
+            </select>
+          </label>
+          <label>贴目
+            <input id="komi-input" type="number" value="7.5" min="-10" max="50" step="0.5" inputmode="decimal">
+          </label>
+        </div>
+        <div class="setting-row">
+          <span>规则</span>
+          <div class="segmented" id="rules-seg" data-setting="rules">
+            <button data-value="chinese" class="active">中国</button>
+            <button data-value="japanese">日本</button>
+          </div>
+        </div>
+        <button class="primary-btn" id="new-game-btn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          开始新对局
+        </button>
+      </section>
+
+      <div class="game-stats">
+        <div><span>本局手数</span><b id="stat-moves">0</b></div>
+        <div><span>提子</span><b id="stat-captures">0</b></div>
+        <div><span>用时</span><b id="stat-time">00:00</b></div>
+      </div>
+
+      <div class="rail-quote">
+        <span>棋 训</span>
+        <p>不得贪胜<br>入界宜缓</p>
+        <em>—— 围棋十诀</em>
+      </div>
+
+      <div class="engine-card" id="engine-card">
+        <div class="engine-head">
+          <span class="status-dot starting" id="engine-dot"></span>
+          <span id="engine-label">引擎预热中</span>
+          <span class="engine-time" id="engine-time">—</span>
+        </div>
+        <div class="engine-detail" id="engine-detail">KataGo · 正在加载神经网络</div>
+        <div class="engine-track"><span id="engine-progress"></span></div>
+        <button class="engine-retry hidden" id="engine-retry-btn" type="button">重启引擎</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="crumbs">
+          <span class="crumb-main">对弈室</span>
+          <span class="crumb-sep">/</span>
+          <span id="move-crumb">第 0 手</span>
+          <span class="crumb-sep">·</span>
+          <span id="phase-crumb">等待落子</span>
+        </div>
+        <div class="top-actions">
+          <div class="strength-badge" id="strength-badge">
+            <span class="badge-dot"></span>
+            职业二段 · 默认
+          </div>
+          <button class="icon-btn lang-btn" id="lang-btn" data-i18n-skip type="button" title="Switch to English" aria-label="Switch to English">EN</button>
+          <button class="icon-btn" id="numbers-btn" title="显示手数" aria-label="显示手数">
+            <svg viewBox="0 0 24 24"><path d="M7 7h4v10H7M14 9.5c0-1.5 1-2.5 2.5-2.5S19 8 19 9.5c0 2.5-5 4-5 7.5h5"/></svg>
+          </button>
+          <button class="icon-btn" id="sound-btn" title="落子音效" aria-label="落子音效">
+            <svg viewBox="0 0 24 24"><path d="M5 10v4h3l4 4V6L8 10z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>
+          </button>
+          <button class="icon-btn" id="help-btn" title="帮助" aria-label="帮助">?</button>
+        </div>
+      </header>
+
+      <section class="table">
+        <div class="player-strip ai" id="ai-strip">
+          <div class="avatar ai-avatar">弈</div>
+          <div class="player-info">
+            <div class="player-name-row">
+              <strong id="ai-name">弈心 · 职业二段</strong>
+              <span class="rank-chip" id="ai-rank">PRO 2D</span>
+            </div>
+            <span class="player-sub" id="ai-sub">主模型 · 400 visits</span>
+          </div>
+          <div class="capture-box"><span class="capture-stone white"></span><b id="ai-captures">0</b><em>提子</em></div>
+          <button class="retry-ai hidden" id="ai-retry-btn">重试 AI</button>
+          <div class="turn-indicator" id="ai-turn"><span></span>等待中</div>
+        </div>
+
+        <div class="board-area">
+          <div class="board-frame">
+            <canvas id="board" aria-label="围棋棋盘"></canvas>
+            <div class="board-badge" id="board-badge">19 路</div>
+            <div class="thinking-pill hidden" id="thinking-pill">
+              <span class="ink-loader"><i></i><i></i><i></i></span>
+              <span id="thinking-text">AI 正在思考</span>
+            </div>
+            <div class="hint-legend hidden" id="hint-legend"></div>
+            <div class="coords-tip" id="coords-tip"></div>
+          </div>
+        </div>
+
+        <div class="player-strip human" id="human-strip">
+          <div class="avatar human-avatar" id="human-avatar">我</div>
+          <div class="player-info">
+            <div class="player-name-row">
+              <strong id="human-name">你</strong>
+              <span class="rank-chip human" id="human-rank">执黑</span>
+            </div>
+            <span class="player-sub" id="human-sub">思考中，落子无悔</span>
+          </div>
+          <div class="capture-box"><span class="capture-stone black"></span><b id="human-captures">0</b><em>提子</em></div>
+          <div class="turn-indicator active" id="human-turn"><span></span>轮到你</div>
+        </div>
+      </section>
+
+      <div class="scoring-bar hidden" id="scoring-bar">
+        <div class="scoring-main">
+          <span class="scoring-tag">数子</span>
+          <strong id="scoring-title">AI 正在判断死活…</strong>
+          <span id="scoring-detail">点击棋子可标记死子</span>
+        </div>
+        <div class="scoring-actions">
+          <button class="ghost-btn" id="resume-btn">继续下棋</button>
+          <button class="ghost-btn" id="reestimate-btn">重新数子</button>
+          <button class="primary-btn small" id="confirm-score-btn">确认结果</button>
+        </div>
+      </div>
+
+      <footer class="actionbar">
+        <button class="action-btn" id="hint-btn">
+          <svg viewBox="0 0 24 24"><path d="M9.5 18h5M10 21h4"/><path d="M8 14.5A6 6 0 1 1 16 14.5c-.8.7-1.3 1.5-1.5 2.5h-5c-.2-1-.7-1.8-1.5-2.5z"/></svg>
+          提示
+          <kbd>H</kbd>
+        </button>
+        <button class="action-btn" id="estimate-btn">
+          <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M8 15v-4M12 15V7M16 15v-2M20 15V9"/></svg>
+          形势
+        </button>
+        <button class="action-btn" id="undo-btn">
+          <svg viewBox="0 0 24 24"><path d="M9 7 4 12l5 5"/><path d="M4 12h9a7 7 0 0 1 7 7"/></svg>
+          悔棋
+          <kbd>U</kbd>
+        </button>
+        <button class="action-btn" id="pass-btn">
+          <svg viewBox="0 0 24 24"><path d="M6 12h12"/><path d="M9 8h6M9 16h6"/></svg>
+          停一手
+          <kbd>P</kbd>
+        </button>
+        <span class="action-divider"></span>
+        <button class="action-btn" id="review-btn">
+          <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="m7 15 4-5 3 3 5-7"/></svg>
+          复盘
+        </button>
+        <button class="action-btn subtle" id="sgf-btn">
+          <svg viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>
+          SGF
+        </button>
+        <span class="spacer"></span>
+        <button class="text-btn danger" id="resign-btn">认输</button>
+      </footer>
+    </main>
+
+    <aside class="inspector">
+      <div class="inspector-head">
+        <div>
+          <span class="eyebrow">AI 棋监</span>
+          <h2>局面研判</h2>
+        </div>
+        <div class="live-pill" id="live-pill"><span></span>LIVE</div>
+      </div>
+
+      <div class="winrate-card">
+        <div class="winrate-top">
+          <span class="wr-black">黑 <b id="black-wr">50.0%</b></span>
+          <span class="wr-label">胜率</span>
+          <span class="wr-white">白 <b id="white-wr">50.0%</b></span>
+        </div>
+        <div class="winrate-bar" aria-hidden="true">
+          <div class="wr-black-fill" id="black-bar" style="width:50%"></div>
+          <div class="wr-white-fill" id="white-bar" style="width:50%"></div>
+          <span class="wr-tick"></span>
+        </div>
+        <div class="eval-row">
+          <span class="lead" id="lead-text">盘面均衡</span>
+          <span class="visits" id="visits-text">0 visits</span>
+        </div>
+        <div class="score-row">
+          <span>AI 目差</span>
+          <strong id="score-lead">0.0</strong>
+          <span class="score-unit">目</span>
+          <span class="score-note" id="score-note">黑棋视角</span>
+        </div>
+      </div>
+
+      <div class="inspector-tabs" role="tablist">
+        <button class="tab active" data-tab="analysis">候选点</button>
+        <button class="tab" data-tab="comments">AI 点评</button>
+        <button class="tab" data-tab="review">复盘</button>
+      </div>
+
+      <div class="tab-panel" id="panel-analysis">
+        <div class="candidate-head">
+          <span>推荐落点</span>
+          <span class="candidate-note" id="candidate-note">等待 AI 分析</span>
+        </div>
+        <div class="candidate-list" id="candidate-list">
+          <div class="empty-state">
+            <div class="empty-mark">卦</div>
+            <p>AI 正在计算候选点</p>
+            <span>落子后会自动更新胜率与推荐</span>
+          </div>
+        </div>
+        <div class="hint-card hidden" id="hint-card">
+          <div class="hint-head"><span>AI 提示</span><b id="hint-move">—</b></div>
+          <p id="hint-text">按 H 获取一手推荐。</p>
+        </div>
+      </div>
+
+      <div class="tab-panel hidden" id="panel-comments">
+        <div class="comment-list" id="comment-list"></div>
+      </div>
+
+      <div class="tab-panel hidden" id="panel-review">
+        <div class="review-empty" id="review-empty">
+          <div class="empty-mark">谱</div>
+          <p>终局后生成 AI 复盘</p>
+          <span>逐手胜率、失误标记与推荐变化</span>
+          <button class="primary-btn small" id="start-review-inline">开始复盘</button>
+        </div>
+        <div class="review-body hidden" id="review-body">
+          <div class="review-summary" id="review-summary"></div>
+          <div class="review-chart-wrap">
+            <canvas id="review-chart"></canvas>
+            <div class="chart-tip hidden" id="chart-tip"></div>
+          </div>
+          <div class="review-list-head"><span>逐手明细</span><span id="review-progress">—</span></div>
+          <div class="review-list" id="review-list"></div>
+          <div class="review-detail hidden" id="review-detail"></div>
+        </div>
+        <div class="review-running hidden" id="review-running">
+          <div class="ink-spinner"></div>
+          <p>AI 正在逐手复盘</p>
+          <span id="review-running-text">0 / 0</span>
+          <div class="progress-track"><span id="review-progress-bar"></span></div>
+        </div>
+      </div>
+
+      <div class="inspector-foot">
+        <span id="model-info">KataGo · b10c512</span>
+        <span class="foot-dot"></span>
+        <span>本地计算 · 棋谱不出户</span>
+      </div>
+    </aside>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="/static/i18n.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

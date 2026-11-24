@@ -1,0 +1,43 @@
+name: Feature request
+description: 想要的功能、想改的体验
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景
+      description: 描述你在做什么的时候觉得不方便，比直接说"加个 XX 功能"有用得多
+      placeholder: 我每天用手机复盘，但界面在窄屏下……
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你希望它怎么工作
+      description: 说清交互流程即可，不用写实现
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 影响范围
+      options:
+        - 前端交互 / 视觉
+        - 引擎与强度
+        - 规则与判定
+        - 打包与安装
+        - 文档
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: 你愿意自己提 PR 吗
+      options:
+        - label: 愿意，我可以写
+        - label: 愿意，但需要指路
+        - label: 我只提需求

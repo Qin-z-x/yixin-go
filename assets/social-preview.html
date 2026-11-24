@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px; height: 640px; overflow: hidden;
+    background: radial-gradient(1200px 600px at 15% -10%, #1b2431 0%, #0d1117 55%, #090c11 100%);
+    color: #e8eaed; font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex; align-items: center; gap: 44px; padding: 0 56px;
+  }
+  .left { width: 470px; flex: none; }
+  .logo { display: flex; align-items: center; gap: 14px; margin-bottom: 26px; }
+  .mark {
+    width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center;
+    background: linear-gradient(145deg, #d9a441, #b9822a); color: #14100a;
+    font-size: 30px; font-weight: 800; letter-spacing: -1px;
+    box-shadow: 0 8px 26px rgba(217,164,65,.28);
+  }
+  .brand { font-size: 21px; font-weight: 700; letter-spacing: .5px; }
+  .brand small { display: block; font-size: 12px; font-weight: 500; color: #8b949e; letter-spacing: .18em; margin-top: 4px; }
+  h1 { font-size: 40px; line-height: 1.24; font-weight: 800; letter-spacing: -.5px; margin-bottom: 16px; }
+  h1 span { color: #e0b44c; }
+  p.sub { font-size: 15.5px; line-height: 1.62; color: #9aa4b2; margin-bottom: 26px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 9px; }
+  .chip {
+    font-size: 12.5px; color: #c8d1dc; padding: 7px 13px; border-radius: 999px;
+    border: 1px solid #2a3341; background: #131a23;
+  }
+  .chip b { color: #e0b44c; font-weight: 600; }
+  .right { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .shot {
+    width: 690px; border-radius: 14px; border: 1px solid #29323f;
+    box-shadow: 0 26px 70px rgba(0,0,0,.62), 0 0 0 1px rgba(255,255,255,.03) inset;
+    display: block;
+  }
+  .foot { position: absolute; left: 56px; bottom: 30px; font-size: 12.5px; color: #5f6a78; letter-spacing: .04em; }
+</style>
+</head>
+<body>
+  <div class="left">
+    <div class="logo">
+      <div class="mark">弈</div>
+      <div class="brand">弈心 · 围棋陪练<small>LOCAL GO SPARRING</small></div>
+    </div>
+    <h1>打开浏览器<br>就能和 <span>KataGo</span> 对坐</h1>
+    <p class="sub">Windows 本地围棋陪练。引擎、神经网络、棋谱全部留在本机，<br>不用注册、不用联网、不用配环境。</p>
+    <div class="chips">
+      <div class="chip"><b>KataGo 1.18.1</b></div>
+      <div class="chip">Human SL <b>6</b> 档</div>
+      <div class="chip">实时提示 / 形势 / 复盘</div>
+      <div class="chip"><b>MIT</b> 开源</div>
+    </div>
+  </div>
+  <div class="right">
+    <img class="shot" src="docs/screenshots/01-home.png" alt="">
+  </div>
+  <div class="foot">github.com/&nbsp;·&nbsp; Windows 10/11 · OpenCL · 完全离线</div>
+</body>
+</html>

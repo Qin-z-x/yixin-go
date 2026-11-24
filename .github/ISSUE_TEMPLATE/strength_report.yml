@@ -1,0 +1,49 @@
+name: 棋力 / 应手反馈
+description: 觉得某一手下得不对、档位不符合描述、AI 提示的胜率离谱
+title: "[strength] "
+labels: ["strength", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        这个模板用来收集"引擎表现"类反馈。请注意：**档位名不是段位证书**，
+        它对应的是"模型 + 每手 visits"的配置。如果你觉得自己被"职业2段"吊打、
+        或者"业余3段"下得太强，这属于正常现象，也欢迎反馈——我需要这类数据来校准档位说明。
+
+  - type: input
+    id: level
+    attributes:
+      label: 使用的档位
+      placeholder: 职业2段（400 visits）/ 业余3段（Human SL）
+    validations:
+      required: true
+
+  - type: input
+    id: engine
+    attributes:
+      label: 引擎就绪耗时与硬件
+      description: 界面左下角会显示引擎状态和耗时
+      placeholder: "引擎就绪 33.2s / OpenCL / RTX 5060 Laptop"
+    validations:
+      required: false
+
+  - type: textarea
+    id: position
+    attributes:
+      label: 棋谱或局面
+      description: 导出 SGF 附上，或直接贴图。说明是哪一手你觉得有问题。
+      placeholder: 第 42 手 AI 扳在这里，我觉得应该长
+    validations:
+      required: true
+
+  - type: dropdown
+    id: expectation
+    attributes:
+      label: 你的判断
+      options:
+        - AI 下得比档位描述强很多
+        - AI 下得比档位描述弱很多
+        - AI 提示的胜率/目差明显不对
+        - 疑似规则 bug（死活、劫、数子）
+    validations:
+      required: true
