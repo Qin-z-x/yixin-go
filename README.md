@@ -10,6 +10,8 @@
 [![Release](https://img.shields.io/github/v/release/Qin-Z-x/yixin-go?style=flat-square&color=e0b44c)](https://github.com/Qin-Z-x/yixin-go/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Qin-Z-x/yixin-go?style=flat-square&color=e0b44c)](https://github.com/Qin-Z-x/yixin-go/stargazers)
 
+> **如果这个项目对你有用，点个 star 或 fork 一下** —— 小项目没有推广预算，这是让更多人看到它、也是让它继续维护下去的最直接帮助。无需注册、无遥测。
+
 <p align="center">
   <img src="docs/screenshots/01-home.png" width="49%" alt="中文界面">
   <img src="docs/screenshots/02-english.png" width="49%" alt="English UI">
@@ -149,6 +151,19 @@ Sabaki、Lizzie 都是很成熟的棋盘与分析师工具，功能比弈心全�
 - [KataGo](https://github.com/lightvector/KataGo) — David J. Wu 与贡献者，MIT。没有它这个项目不存在。
 - [Sabaki](https://github.com/SabakiHQ/Sabaki)、[Lizzie](https://github.com/featurecat/lizzie) — 棋盘与 AI 复盘交互上的前辈，很多设计思路来自它们。
 - Python、PyInstaller 各自遵循其许可证。
+
+## 相关项目（同一作者，互相独立、标准库优先）
+
+同一作者的其他开源项目，各自独立、能力边界写在各自的 README 里：
+
+- [llm-failbench](https://github.com/Qin-Z-x/llm-failbench) —— 面向 LLM 的确定性失败探针：10 类 100 条、免评审、可进 CI 门禁 + 带引用的失败案例库。
+- [llm-json-doctor](https://github.com/Qin-Z-x/llm-json-doctor) —— LLM 坏 JSON 的确定性修复 + JSON Schema 校验；不调模型、标准库实现。
+- [llm-invisible-guard](https://github.com/Qin-Z-x/llm-invisible-guard) —— 不可见 Unicode（零宽/双向控制/标签走私）提示注入检测与清洗。
+- [llm-exfil-guard](https://github.com/Qin-Z-x/llm-exfil-guard) —— 渲染输出外带检测：图片信标、隐藏内容、远程加载。
+- [slopsquat-guard](https://github.com/Qin-Z-x/slopsquat-guard) —— 幻觉/仿冒包名校验：安装前查 PyPI / npm 依赖名是否存在、是否近似热门包。
+- [regex-redos-guard](https://github.com/Qin-Z-x/regex-redos-guard) —— LLM 生成正则的 ReDoS（灾难性回溯）风险检测，静态规则 + 超时实测。
+
+如果你只想要其中一个，直接 fork 即可，不需要整套一起用。
 
 ## 参与
 
