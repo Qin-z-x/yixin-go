@@ -175,3 +175,7 @@ Sabaki、Lizzie 都是很成熟的棋盘与分析师工具，功能比弈心全�
 ---
 
 <sub>如果你也在找一个能安安静静陪你下棋、不下完就把棋谱传上云的东西，这个项目就是为你写的。</sub>
+
+## 视频演示
+- B站：https://www.bilibili.com/video/BV1SMyozuECn （围棋 AI 陪练 4:57 演示）
+- 项目主页/在线索引：https://qin-z-x.github.io/llm-security-toolkit/ （安全系列）或 https://github.com/Qin-Z-x
